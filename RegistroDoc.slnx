@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RegistroDoc.Api/RegistroDoc.Api.csproj" />
+    <Project Path="src/RegistroDoc.Application/RegistroDoc.Application.csproj" />
+    <Project Path="src/RegistroDoc.Contracts/RegistroDoc.Contracts.csproj" />
+    <Project Path="src/RegistroDoc.Domain/RegistroDoc.Domain.csproj" />
+    <Project Path="src/RegistroDoc.Indexer/RegistroDoc.Indexer.csproj" />
+    <Project Path="src/RegistroDoc.Infrastructure/RegistroDoc.Infrastructure.csproj" />
+    <Project Path="src/RegistroDoc.Web/RegistroDoc.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RegistroDoc.IntegrationTests/RegistroDoc.IntegrationTests.csproj" />
+    <Project Path="tests/RegistroDoc.UnitTests/RegistroDoc.UnitTests.csproj" />
+  </Folder>
+</Solution>
