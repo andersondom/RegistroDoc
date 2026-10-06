@@ -4,6 +4,7 @@
     <Project Path="src/RegistroDoc.Application/RegistroDoc.Application.csproj" />
     <Project Path="src/RegistroDoc.Contracts/RegistroDoc.Contracts.csproj" />
     <Project Path="src/RegistroDoc.Domain/RegistroDoc.Domain.csproj" />
+    <Project Path="src/RegistroDoc.IdentityHub/RegistroDoc.IdentityHub.csproj" />
     <Project Path="src/RegistroDoc.Indexer/RegistroDoc.Indexer.csproj" />
     <Project Path="src/RegistroDoc.Infrastructure/RegistroDoc.Infrastructure.csproj" />
     <Project Path="src/RegistroDoc.Web/RegistroDoc.Web.csproj" />
