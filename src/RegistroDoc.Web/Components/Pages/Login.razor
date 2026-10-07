@@ -1,0 +1,53 @@
+@page "/login"
+
+<PageTitle>Entrar - RegistroDoc</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <h1 class="h3 mb-4">Entrar no RegistroDoc</h1>
+
+        @if (!string.IsNullOrWhiteSpace(MensagemErro))
+        {
+            <div class="alert alert-danger" role="alert">@MensagemErro</div>
+        }
+
+        <form method="post" action="/auth/login">
+            <div class="mb-3">
+                <label class="form-label" for="email">E-mail</label>
+                <input id="email"
+                       name="email"
+                       type="email"
+                       class="form-control"
+                       autocomplete="username"
+                       required />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="senha">Senha</label>
+                <input id="senha"
+                       name="password"
+                       type="password"
+                       class="form-control"
+                       autocomplete="current-password"
+                       required />
+            </div>
+
+            <button class="btn btn-primary w-100" type="submit">
+                Entrar
+            </button>
+        </form>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "erro")]
+    public string? Erro { get; set; }
+
+    private string? MensagemErro =>
+        Erro switch
+        {
+            "campos" => "Informe o e-mail e a senha.",
+            "credenciais" => "E-mail ou senha inválidos.",
+            _ => null
+        };
+}

@@ -127,6 +127,16 @@ builder.Services.AddScoped<JwtTokenService>();
 
 var app = builder.Build();
 
+// Garante que um ambiente novo tenha o schema do ASP.NET Core Identity
+// antes da criação das roles e do administrador inicial.
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext =
+        scope.ServiceProvider.GetRequiredService<IdentityHubDbContext>();
+
+    await dbContext.Database.MigrateAsync();
+}
+
 await IdentityDataInitializer.InitializeAsync(app.Services);
 
 if (app.Environment.IsDevelopment())

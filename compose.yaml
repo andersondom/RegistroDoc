@@ -1,28 +1,205 @@
-﻿name: registrodoc
+name: registrodoc
 
 services:
   postgres:
     image: postgres:17
     container_name: registrodoc-postgres
     restart: unless-stopped
-
     environment:
       POSTGRES_DB: registrodoc
       POSTGRES_USER: registrodoc
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
-
-    ports:
-      - "127.0.0.1:5432:5432"
-
     volumes:
       - registrodoc_pgdata:/var/lib/postgresql/data
-
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U registrodoc -d registrodoc"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
+
+  identityhub:
+    build:
+      context: .
+      dockerfile: src/RegistroDoc.IdentityHub/Dockerfile
+    container_name: registrodoc-identityhub
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__IdentityHub: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Defina JWT_SIGNING_KEY no arquivo .env}
+      IDENTITY_ADMIN_EMAIL: ${IDENTITY_ADMIN_EMAIL:-}
+      IDENTITY_ADMIN_PASSWORD: ${IDENTITY_ADMIN_PASSWORD:-}
+    ports:
+      - "127.0.0.1:8081:8080"
+
+  api:
+    build:
+      context: .
+      dockerfile: src/RegistroDoc.Api/Dockerfile
+    container_name: registrodoc-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      identityhub:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Documents__RootPath: /data/input
+    volumes:
+      - ./data/input:/data/input:ro
+    ports:
+      - "127.0.0.1:8082:8080"
+
+  sampledata:
+    image: alpine:3.22
+    container_name: registrodoc-sampledata
+    restart: "no"
+    volumes:
+      - ./data/input:/data/input
+    command:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /data/input/2025 /data/input/2026
+        rm -f /data/input/habilitacao-ficticia-2025-002.pdf /data/input/habilitacao-ficticia-2026-001.pdf
+        printf '%s' 'JVBERi0xLjMKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgKG9wZW5zb3VyY2UpCjEgMCBvYmoKPDwKL0YxIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9CYXNlRm9udCAvSGVsdmV0aWNhIC9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nIC9OYW1lIC9GMSAvU3VidHlwZSAvVHlwZTEgL1R5cGUgL0ZvbnQKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL0NvbnRlbnRzIDcgMCBSIC9NZWRpYUJveCBbIDAgMCA1OTUgODQyIF0gL1BhcmVudCA2IDAgUiAvUmVzb3VyY2VzIDw8Ci9Gb250IDEgMCBSIC9Qcm9jU2V0IFsgL1BERiAvVGV4dCAvSW1hZ2VCIC9JbWFnZUMgL0ltYWdlSSBdCj4+IC9Sb3RhdGUgMCAvVHJhbnMgPDwKCj4+IAogIC9UeXBlIC9QYWdlCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9QYWdlTW9kZSAvVXNlTm9uZSAvUGFnZXMgNiAwIFIgL1R5cGUgL0NhdGFsb2cKPj4KZW5kb2JqCjUgMCBvYmoKPDwKL0F1dGhvciAoYW5vbnltb3VzKSAvQ3JlYXRpb25EYXRlIChEOjIwMjYxMDA3MTM0NzI0KzAwJzAwJykgL0NyZWF0b3IgKGFub255bW91cykgL0tleXdvcmRzICgpIC9Nb2REYXRlIChEOjIwMjYxMDA3MTM0NzI0KzAwJzAwJykgL1Byb2R1Y2VyIChSZXBvcnRMYWIgUERGIExpYnJhcnkgLSBcKG9wZW5zb3VyY2VcKSkgCiAgL1N1YmplY3QgKHVuc3BlY2lmaWVkKSAvVGl0bGUgKHVudGl0bGVkKSAvVHJhcHBlZCAvRmFsc2UKPj4KZW5kb2JqCjYgMCBvYmoKPDwKL0NvdW50IDEgL0tpZHMgWyAzIDAgUiBdIC9UeXBlIC9QYWdlcwo+PgplbmRvYmoKNyAwIG9iago8PAovRmlsdGVyIFsgL0FTQ0lJODVEZWNvZGUgL0ZsYXRlRGVjb2RlIF0gL0xlbmd0aCAzMzAKPj4Kc3RyZWFtCkdhcnAmOkpaVHMocnUxRD9IKUIzLTtHXD5GMTJXQGBVSU1rTFciRzxWMkkycihXbU0jXjZTKkQ2LjRnUzFmJD0yNSFEKydyK1g6YGZGW0paNTVZRGZMRUEtOTpeVHIqcFs7SGksN2I7OCYoS1I8ak5nQ2RBYXJhPFw6cERwYGNFVzY5ayRgU1VxaSJVJSlhW1VmOlhlRGJzMGQtME5nJ2c2YXFAVTtBXzR0Wio5cyRyRmQxcEhAcyFAVTNSc2gtUjdrRzIoMzYvQGtAPVdOYHAxLWYzbkVOIVhiRiZjM3MsI1QnYXM4PGZBKXA4TC0wOCMzb0YkOCNvRWFmaCZRXnE5PDEpUHVVdE1KXEJcIl1HLklwLjlISzJZc1tSKlM3NSFCYGxSMzk2dGxqbEk1JkBwIlYwciUsOzpPbjApci5YcXVFVGxGIVV+PmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDYxIDAwMDAwIG4gCjAwMDAwMDAwOTIgMDAwMDAgbiAKMDAwMDAwMDE5OSAwMDAwMCBuIAowMDAwMDAwMzkyIDAwMDAwIG4gCjAwMDAwMDA0NjAgMDAwMDAgbiAKMDAwMDAwMDcyMSAwMDAwMCBuIAowMDAwMDAwNzgwIDAwMDAwIG4gCnRyYWlsZXIKPDwKL0lEIApbPDUxMGJhOWQ0OTQ1MDMyYjRhOGE4MmRiMWZjZjk5ZGIwPjw1MTBiYTlkNDk0NTAzMmI0YThhODJkYjFmY2Y5OWRiMD5dCiUgUmVwb3J0TGFiIGdlbmVyYXRlZCBQREYgZG9jdW1lbnQgLS0gZGlnZXN0IChvcGVuc291cmNlKQoKL0luZm8gNSAwIFIKL1Jvb3QgNCAwIFIKL1NpemUgOAo+PgpzdGFydHhyZWYKMTIwMAolJUVPRgo=' | base64 -d > /data/input/2026/habilitacao-ficticia-2026-001.pdf
+        printf '%s' 'JVBERi0xLjMKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgKG9wZW5zb3VyY2UpCjEgMCBvYmoKPDwKL0YxIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9CYXNlRm9udCAvSGVsdmV0aWNhIC9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nIC9OYW1lIC9GMSAvU3VidHlwZSAvVHlwZTEgL1R5cGUgL0ZvbnQKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL0NvbnRlbnRzIDcgMCBSIC9NZWRpYUJveCBbIDAgMCA1OTUgODQyIF0gL1BhcmVudCA2IDAgUiAvUmVzb3VyY2VzIDw8Ci9Gb250IDEgMCBSIC9Qcm9jU2V0IFsgL1BERiAvVGV4dCAvSW1hZ2VCIC9JbWFnZUMgL0ltYWdlSSBdCj4+IC9Sb3RhdGUgMCAvVHJhbnMgPDwKCj4+IAogIC9UeXBlIC9QYWdlCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9QYWdlTW9kZSAvVXNlTm9uZSAvUGFnZXMgNiAwIFIgL1R5cGUgL0NhdGFsb2cKPj4KZW5kb2JqCjUgMCBvYmoKPDwKL0F1dGhvciAoYW5vbnltb3VzKSAvQ3JlYXRpb25EYXRlIChEOjIwMjYxMDA3MTM0NzI0KzAwJzAwJykgL0NyZWF0b3IgKGFub255bW91cykgL0tleXdvcmRzICgpIC9Nb2REYXRlIChEOjIwMjYxMDA3MTM0NzI0KzAwJzAwJykgL1Byb2R1Y2VyIChSZXBvcnRMYWIgUERGIExpYnJhcnkgLSBcKG9wZW5zb3VyY2VcKSkgCiAgL1N1YmplY3QgKHVuc3BlY2lmaWVkKSAvVGl0bGUgKHVudGl0bGVkKSAvVHJhcHBlZCAvRmFsc2UKPj4KZW5kb2JqCjYgMCBvYmoKPDwKL0NvdW50IDEgL0tpZHMgWyAzIDAgUiBdIC9UeXBlIC9QYWdlcwo+PgplbmRvYmoKNyAwIG9iago8PAovRmlsdGVyIFsgL0FTQ0lJODVEZWNvZGUgL0ZsYXRlRGVjb2RlIF0gL0xlbmd0aCAzMzYKPj4Kc3RyZWFtCkdhczMuNXUsPE8mLV5GLzpbc2QlNnFPKzBQalY2KSgvJkBJLS47cjVgdF8nOD5mQ0Vybk0sUnUkXTZMW19BXixgNT1RPm40QUZXNGNcLidyTiZVaFkmWj40NzwuYFJNcjVWJSY9Yk9oLCJSOXIpblZzS0hQKGgsIk8iXylLXipBS0JhQFlHWkBhP00uaVxnNzFjb15JWiVyNzskZXIral5YVzxbLSVaTmNXXV1yMFRcY0IobitjMkIkRlgnSSo2aEksa047Jz5sKl8zOCRYMCh0RGpLJ2dLJEdNY1ouK2g7YSZtSk4uO0kxWlVWZWRSISUlVyVIZC1dTkBiN3M/PD4yK0dkPltcaiw8bkZWY2glKDVOcm8oMEVgOWc3dUc0Kl8xS1JyXWg2MCVWNV07VG0/I18tbENcPW1qSzRlMEFzPCcxLSFAZUwqVG44dCZ+PmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDYxIDAwMDAwIG4gCjAwMDAwMDAwOTIgMDAwMDAgbiAKMDAwMDAwMDE5OSAwMDAwMCBuIAowMDAwMDAwMzkyIDAwMDAwIG4gCjAwMDAwMDA0NjAgMDAwMDAgbiAKMDAwMDAwMDcyMSAwMDAwMCBuIAowMDAwMDAwNzgwIDAwMDAwIG4gCnRyYWlsZXIKPDwKL0lEIApbPGRjYjg5OTI1ZmE1M2VhYzdhYjhiZGFmOTgxNThkNzdhPjxkY2I4OTkyNWZhNTNlYWM3YWI4YmRhZjk4MTU4ZDc3YT5dCiUgUmVwb3J0TGFiIGdlbmVyYXRlZCBQREYgZG9jdW1lbnQgLS0gZGlnZXN0IChvcGVuc291cmNlKQoKL0luZm8gNSAwIFIKL1Jvb3QgNCAwIFIKL1NpemUgOAo+PgpzdGFydHhyZWYKMTIwNgolJUVPRgo=' | base64 -d > /data/input/2025/habilitacao-ficticia-2025-002.pdf
+        for i in $$(seq -w 3 23); do
+          destino="/data/input/2026/habilitacao-ficticia-2026-$$i.pdf"
+          cp /data/input/2026/habilitacao-ficticia-2026-001.pdf "$$destino"
+          printf '\n%% REGISTRODOC PAGINACAO %s\n' "$$i" >> "$$destino"
+        done
+        # Massa ficticia de benchmark: 2.000 PDFs adicionais, sem dados pessoais.
+        # O comentario apos EOF preserva o PDF-base e produz SHA-256 unico por arquivo.
+        mkdir -p /data/input/benchmark/2026
+        rm -f /data/input/benchmark/2026/*.pdf
+        for i in $$(seq -w 1 2000); do
+          destino="/data/input/benchmark/2026/benchmark-ficticio-2026-$$i.pdf"
+          cp /data/input/2026/habilitacao-ficticia-2026-001.pdf "$$destino"
+          printf '\n%% REGISTRODOC BENCHMARK %s\n' "$$i" >> "$$destino"
+        done
+        echo "PDFs ficticios preparados: 23 funcionais + 2000 documentos de benchmark."
+
+  indexer2026:
+    build:
+      context: .
+      dockerfile: src/RegistroDoc.Indexer/Dockerfile
+    container_name: registrodoc-indexer-2026
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+      sampledata:
+        condition: service_completed_successfully
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Indexer__InputPath: /data/input/2026
+      Indexer__SearchPattern: "*.pdf"
+      Indexer__IncludeSubdirectories: "false"
+      Indexer__ScanIntervalSeconds: "5"
+      Indexer__CodigoCnsServentia: TESTE0001
+      Indexer__TipoDocumento: HabilitacaoCasamento
+      Indexer__AnoReferencia: "2026"
+      Indexer__ProcessingTimeoutMinutes: "30"
+    volumes:
+      - ./data/input:/data/input:ro
+
+
+  indexerbenchmark:
+    build:
+      context: .
+      dockerfile: src/RegistroDoc.Indexer/Dockerfile
+    container_name: registrodoc-indexer-benchmark
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+      sampledata:
+        condition: service_completed_successfully
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Indexer__InputPath: /data/input/benchmark/2026
+      Indexer__SearchPattern: "*.pdf"
+      Indexer__IncludeSubdirectories: "false"
+      Indexer__ScanIntervalSeconds: "5"
+      Indexer__CodigoCnsServentia: TESTE0001
+      Indexer__TipoDocumento: HabilitacaoCasamento
+      Indexer__AnoReferencia: "2026"
+      Indexer__ProcessingTimeoutMinutes: "30"
+    volumes:
+      - ./data/input:/data/input:ro
+
+  indexer2025:
+    build:
+      context: .
+      dockerfile: src/RegistroDoc.Indexer/Dockerfile
+    container_name: registrodoc-indexer-2025
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+      sampledata:
+        condition: service_completed_successfully
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Indexer__InputPath: /data/input/2025
+      Indexer__SearchPattern: "*.pdf"
+      Indexer__IncludeSubdirectories: "false"
+      Indexer__ScanIntervalSeconds: "5"
+      Indexer__CodigoCnsServentia: TESTE0001
+      Indexer__TipoDocumento: HabilitacaoCasamento
+      Indexer__AnoReferencia: "2025"
+      Indexer__ProcessingTimeoutMinutes: "30"
+    volumes:
+      - ./data/input:/data/input:ro
+
+  web:
+    build:
+      context: .
+      dockerfile: src/RegistroDoc.Web/Dockerfile
+    container_name: registrodoc-web
+    restart: unless-stopped
+    depends_on:
+      - identityhub
+      - api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Api__BaseUrl: "http://api:8080/"
+      IdentityHub__BaseUrl: "http://identityhub:8080/"
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  tests:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    profiles: ["test"]
+    working_dir: /src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    volumes:
+      - ./:/src
+    command: ["dotnet", "test", "RegistroDoc.slnx", "--configuration", "Release"]
 
 volumes:
   registrodoc_pgdata:

@@ -490,7 +490,8 @@ $RECYCLE.BIN/
 *.png
 
 # Dados locais e arquivos de processamento
-data/
+# Apenas diretorios locais na raiz; pastas Data de projetos .NET devem ser versionadas.
+/data/
 storage/
 temp/
 backups/

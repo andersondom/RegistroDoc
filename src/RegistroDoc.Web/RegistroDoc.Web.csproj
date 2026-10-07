@@ -7,4 +7,8 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\RegistroDoc.Contracts\RegistroDoc.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>
