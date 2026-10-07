@@ -120,7 +120,9 @@ public sealed class Worker : BackgroundService
         var pdf =
             await _pdfFileInspector.InspectAsync(
                 arquivo,
-                inputPath,
+                string.IsNullOrWhiteSpace(_options.RepositoryRootPath)
+                    ? inputPath
+                    : Path.GetFullPath(_options.RepositoryRootPath),
                 cancellationToken);
 
         await using var scope =
