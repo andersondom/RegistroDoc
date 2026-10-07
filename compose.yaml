@@ -103,6 +103,7 @@ services:
     environment:
       DOTNET_ENVIRONMENT: Development
       ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Indexer__RepositoryRootPath: /data/input
       Indexer__InputPath: /data/input/2026
       Indexer__SearchPattern: "*.pdf"
       Indexer__IncludeSubdirectories: "false"
@@ -131,6 +132,7 @@ services:
     environment:
       DOTNET_ENVIRONMENT: Development
       ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Indexer__RepositoryRootPath: /data/input
       Indexer__InputPath: /data/input/benchmark/2026
       Indexer__SearchPattern: "*.pdf"
       Indexer__IncludeSubdirectories: "false"
@@ -158,6 +160,7 @@ services:
     environment:
       DOTNET_ENVIRONMENT: Development
       ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Indexer__RepositoryRootPath: /data/input
       Indexer__InputPath: /data/input/2025
       Indexer__SearchPattern: "*.pdf"
       Indexer__IncludeSubdirectories: "false"
