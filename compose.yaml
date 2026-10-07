@@ -53,6 +53,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
       Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Documents__RootPath: /data/input
+    volumes:
+      - ./data/input:/data/input:ro
     ports:
       - "127.0.0.1:8082:8080"
 
