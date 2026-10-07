@@ -11,4 +11,10 @@ public sealed class IndexerOptions
     public bool IncludeSubdirectories { get; set; } = true;
 
     public int ScanIntervalSeconds { get; set; } = 10;
+
+    public string CodigoCnsServentia { get; set; } = string.Empty;
+
+    public string TipoDocumento { get; set; } = "HabilitacaoCasamento";
+
+    public int? AnoReferencia { get; set; }
 }

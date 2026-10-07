@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RegistroDoc.Domain.Entities;
 using RegistroDoc.Indexer.Options;
@@ -9,9 +9,7 @@ namespace RegistroDoc.Indexer;
 
 public sealed class Worker : BackgroundService
 {
-    private const string CodigoCnsServentiaTeste = "TESTE0001";
-
-    private readonly ILogger<Worker> _logger;
+private readonly ILogger<Worker> _logger;
     private readonly IndexerOptions _options;
     private readonly IHostEnvironment _environment;
     private readonly IPdfFileInspector _pdfFileInspector;
@@ -182,23 +180,23 @@ public sealed class Worker : BackgroundService
                 .SingleOrDefaultAsync(
                     item =>
                         item.CodigoCns ==
-                        CodigoCnsServentiaTeste,
+                        _options.CodigoCnsServentia,
                     cancellationToken);
 
         if (serventia is null)
         {
             throw new InvalidOperationException(
-                $"Serventia fictícia {CodigoCnsServentiaTeste} não encontrada.");
+                $"Serventia fictícia {_options.CodigoCnsServentia} não encontrada.");
         }
 
         var documento = new Documento
         {
             Id = Guid.NewGuid(),
             ServentiaId = serventia.Id,
-            TipoDocumento = "HabilitacaoCasamento",
+            TipoDocumento = _options.TipoDocumento,
             NomeArquivo = pdf.NomeArquivo,
             CaminhoRelativo = pdf.CaminhoRelativo,
-            AnoReferencia = 2026,
+            AnoReferencia = _options.AnoReferencia,
             TamanhoBytes = pdf.TamanhoBytes,
             HashSha256 = pdf.HashSha256,
             QuantidadePaginas = 0,

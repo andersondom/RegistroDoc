@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using RegistroDoc.Indexer;
 using RegistroDoc.Indexer.Options;
 using RegistroDoc.Indexer.Services;
@@ -23,6 +23,16 @@ builder.Services
         options =>
             options.ScanIntervalSeconds > 0,
         "Indexer:ScanIntervalSeconds deve ser maior que zero.")
+    .Validate(
+        options =>
+            !string.IsNullOrWhiteSpace(
+                options.CodigoCnsServentia),
+        "Indexer:CodigoCnsServentia é obrigatório.")
+    .Validate(
+        options =>
+            !string.IsNullOrWhiteSpace(
+                options.TipoDocumento),
+        "Indexer:TipoDocumento é obrigatório.")
     .ValidateOnStart();
 
 var connectionString =
