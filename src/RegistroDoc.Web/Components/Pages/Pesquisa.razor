@@ -7,6 +7,7 @@
 @using RegistroDoc.Web.Services
 @rendermode InteractiveServer
 @inject IHttpClientFactory HttpClientFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Pesquisa - RegistroDoc</PageTitle>
 
@@ -181,8 +182,28 @@
             }
 
             var client = HttpClientFactory.CreateClient("RegistroDoc.Api");
-            _resultado = await client.GetFromJsonAsync<DocumentoSearchResponse>(
+            var authenticationState =
+                await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var accessToken =
+                authenticationState.User.FindFirst("registrodoc_access_token")?.Value;
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
                 "api/documentos/pesquisa?" + string.Join("&", parametros));
+
+            if (!string.IsNullOrWhiteSpace(accessToken))
+            {
+                request.Headers.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue(
+                        "Bearer",
+                        accessToken);
+            }
+
+            using var response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            _resultado =
+                await response.Content.ReadFromJsonAsync<DocumentoSearchResponse>();
 
             if (_resultado is null)
             {
