@@ -17,7 +17,7 @@
             <div class="alert alert-danger" role="alert">@_erro</div>
         }
 
-        <EditForm Model="_model" OnValidSubmit="EntrarAsync" FormName="login">
+        <EditForm Model="_model" OnValidSubmit="EntrarAsync" FormName="login" Enhance="false">
             <DataAnnotationsValidator />
             <ValidationSummary />
 
@@ -48,7 +48,8 @@
 </div>
 
 @code {
-    private readonly LoginModel _model = new();
+    [SupplyParameterFromForm(FormName = "login")]
+    private LoginModel _model { get; set; } = new();
     private bool _carregando;
     private string? _erro;
 
