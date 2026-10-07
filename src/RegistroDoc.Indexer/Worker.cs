@@ -1,3 +1,4 @@
+using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RegistroDoc.Domain.Entities;
@@ -9,7 +10,7 @@ namespace RegistroDoc.Indexer;
 
 public sealed class Worker : BackgroundService
 {
-private readonly ILogger<Worker> _logger;
+    private readonly ILogger<Worker> _logger;
     private readonly IndexerOptions _options;
     private readonly IHostEnvironment _environment;
     private readonly IPdfFileInspector _pdfFileInspector;
@@ -139,13 +140,49 @@ private readonly ILogger<Worker> _logger;
 
         if (documento is null)
         {
-            documento =
-                await CriarDocumentoAsync(
-                    db,
-                    pdf,
-                    cancellationToken);
+            try
+            {
+                documento =
+                    await CriarDocumentoAsync(
+                        db,
+                        pdf,
+                        cancellationToken);
+            }
+            catch (DbUpdateException exception)
+                when (
+                    exception.InnerException
+                        is PostgresException postgresException &&
+                    postgresException.SqlState ==
+                        PostgresErrorCodes.UniqueViolation &&
+                    postgresException.ConstraintName ==
+                        "IX_Documentos_HashSha256")
+            {
+                _logger.LogInformation(
+                    "Concorrência detectada para SHA-256 {HashSha256}. " +
+                    "Outro Worker cadastrou o documento primeiro.",
+                    pdf.HashSha256);
+
+                db.ChangeTracker.Clear();
+
+                documento =
+                    await db.Documentos
+                        .FirstOrDefaultAsync(
+                            item =>
+                                item.HashSha256 ==
+                                pdf.HashSha256,
+                            cancellationToken);
+
+                if (documento is null)
+                {
+                    throw new InvalidOperationException(
+                        "Violação de unicidade detectada, " +
+                        "mas o documento concorrente não foi localizado.",
+                        exception);
+                }
+            }
         }
-        else if (
+
+        if (
             string.Equals(
                 documento.StatusIndexacao,
                 "Concluido",
@@ -259,13 +296,129 @@ private readonly ILogger<Worker> _logger;
             db.ExecucoesIndexacao.Add(execucao);
         }
 
+        var processamentoAdquirido = false;
+
+
         try
         {
+            var agoraUtc =
+                DateTime.UtcNow;
+
+            var limiteProcessamentoUtc =
+                agoraUtc.AddMinutes(
+                    -_options.ProcessingTimeoutMinutes);
+
+            var documentosAdquiridos =
+                await db.Documentos
+                    .Where(item =>
+                        item.Id == documento.Id &&
+                        (
+                            item.StatusIndexacao == "Pendente" ||
+                            item.StatusIndexacao == "Erro"
+                        ))
+                    .ExecuteUpdateAsync(
+                        setters =>
+                            setters.SetProperty(
+                                item =>
+                                    item.StatusIndexacao,
+                                "Processando"),
+                        cancellationToken);
+
+            var recuperado =
+                false;
+
+            if (
+                documentosAdquiridos == 0 &&
+                string.Equals(
+                    documento.StatusIndexacao,
+                    "Processando",
+                    StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(
+                    execucao.Status,
+                    "Processando",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                var execucoesRecuperadas =
+                    await db.ExecucoesIndexacao
+                        .Where(item =>
+                            item.Id == execucao.Id &&
+                            item.Status == "Processando" &&
+                            item.IniciadaEmUtc <=
+                                limiteProcessamentoUtc)
+                        .ExecuteUpdateAsync(
+                            setters =>
+                                setters
+                                    .SetProperty(
+                                        item =>
+                                            item.IniciadaEmUtc,
+                                        agoraUtc)
+                                    .SetProperty(
+                                        item =>
+                                            item.FinalizadaEmUtc,
+                                        (DateTime?)null)
+                                    .SetProperty(
+                                        item =>
+                                            item.MensagemErro,
+                                        (string?)null),
+                            cancellationToken);
+
+                recuperado =
+                    execucoesRecuperadas == 1;
+
+                if (recuperado)
+                {
+                    _logger.LogWarning(
+                        "Processamento abandonado recuperado. " +
+                        "DocumentoId: {DocumentoId} | " +
+                        "ExecucaoId: {ExecucaoId} | " +
+                        "Arquivo: {NomeArquivo} | " +
+                        "TimeoutMinutos: {TimeoutMinutos}",
+                        documento.Id,
+                        execucao.Id,
+                        documento.NomeArquivo,
+                        _options.ProcessingTimeoutMinutes);
+                }
+            }
+
+            if (
+                documentosAdquiridos == 0 &&
+                !recuperado)
+            {
+                _logger.LogInformation(
+                    "Documento não adquirido para indexação. " +
+                    "Outro Worker já iniciou ou concluiu o processamento. " +
+                    "DocumentoId: {DocumentoId} | " +
+                    "Arquivo: {NomeArquivo}",
+                    documento.Id,
+                    documento.NomeArquivo);
+
+                return;
+            }
+
+            processamentoAdquirido = true;
+
+            if (!recuperado)
+            {
+                _logger.LogInformation(
+                    "Documento adquirido para indexação. " +
+                    "DocumentoId: {DocumentoId} | " +
+                    "Arquivo: {NomeArquivo}",
+                    documento.Id,
+                    documento.NomeArquivo);
+            }
+
+
             documento.StatusIndexacao =
                 "Processando";
 
             execucao.Status =
                 "Processando";
+
+            execucao.IniciadaEmUtc =
+                DateTime.UtcNow;
+
+            execucao.FinalizadaEmUtc =
+                null;
 
             execucao.MensagemErro =
                 null;
@@ -276,6 +429,10 @@ private readonly ILogger<Worker> _logger;
             var paginas =
                 await _pdfTextExtractor.ExtractAsync(
                     arquivo,
+                    cancellationToken);
+
+            await using var transaction =
+                await db.Database.BeginTransactionAsync(
                     cancellationToken);
 
             var paginasAnteriores =
@@ -330,6 +487,9 @@ private readonly ILogger<Worker> _logger;
             await db.SaveChangesAsync(
                 cancellationToken);
 
+            await transaction.CommitAsync(
+                cancellationToken);
+
             _logger.LogInformation(
                 "PDF indexado. " +
                 "DocumentoId: {DocumentoId} | " +
@@ -338,6 +498,73 @@ private readonly ILogger<Worker> _logger;
                 documento.Id,
                 documento.NomeArquivo,
                 documento.QuantidadePaginas);
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogInformation(
+                "Indexação cancelada durante o encerramento. " +
+                "DocumentoId: {DocumentoId} | " +
+                "Arquivo: {NomeArquivo}",
+                documento.Id,
+                documento.NomeArquivo);
+
+            if (processamentoAdquirido)
+            {
+                try
+                {
+                    await db.Documentos
+                        .Where(item =>
+                            item.Id == documento.Id &&
+                            item.StatusIndexacao == "Processando")
+                        .ExecuteUpdateAsync(
+                            setters =>
+                                setters.SetProperty(
+                                    item =>
+                                        item.StatusIndexacao,
+                                    "Pendente"),
+                            CancellationToken.None);
+
+                    await db.ExecucoesIndexacao
+                        .Where(item =>
+                            item.Id == execucao.Id &&
+                            item.Status == "Processando")
+                        .ExecuteUpdateAsync(
+                            setters =>
+                                setters
+                                    .SetProperty(
+                                        item =>
+                                            item.Status,
+                                        "Pendente")
+                                    .SetProperty(
+                                        item =>
+                                            item.FinalizadaEmUtc,
+                                        (DateTime?)null)
+                                    .SetProperty(
+                                        item =>
+                                            item.MensagemErro,
+                                        (string?)null),
+                            CancellationToken.None);
+
+                    _logger.LogInformation(
+                        "Aquisição liberada após cancelamento. " +
+                        "DocumentoId: {DocumentoId} | " +
+                        "ExecucaoId: {ExecucaoId}",
+                        documento.Id,
+                        execucao.Id);
+                }
+                catch (Exception liberacaoException)
+                {
+                    _logger.LogError(
+                        liberacaoException,
+                        "Não foi possível liberar a aquisição " +
+                        "após o cancelamento. " +
+                        "DocumentoId: {DocumentoId}",
+                        documento.Id);
+                }
+            }
+
+            throw;
         }
         catch (Exception exception)
         {

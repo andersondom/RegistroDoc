@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\RegistroDoc.Api\RegistroDoc.Api.csproj" />
     <ProjectReference Include="..\..\src\RegistroDoc.Infrastructure\RegistroDoc.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\RegistroDoc.Indexer\RegistroDoc.Indexer.csproj" />
   </ItemGroup>
 
 </Project>

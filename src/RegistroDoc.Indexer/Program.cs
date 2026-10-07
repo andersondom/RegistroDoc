@@ -33,7 +33,11 @@ builder.Services
             !string.IsNullOrWhiteSpace(
                 options.TipoDocumento),
         "Indexer:TipoDocumento é obrigatório.")
-    .ValidateOnStart();
+    .Validate(
+    options =>
+        options.ProcessingTimeoutMinutes > 0,
+    "Indexer:ProcessingTimeoutMinutes deve ser maior que zero.")
+.ValidateOnStart();
 
 var connectionString =
     builder.Configuration.GetConnectionString("RegistroDoc");

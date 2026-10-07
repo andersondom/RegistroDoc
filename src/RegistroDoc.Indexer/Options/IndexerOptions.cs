@@ -1,4 +1,4 @@
-﻿namespace RegistroDoc.Indexer.Options;
+namespace RegistroDoc.Indexer.Options;
 
 public sealed class IndexerOptions
 {
@@ -17,4 +17,6 @@ public sealed class IndexerOptions
     public string TipoDocumento { get; set; } = "HabilitacaoCasamento";
 
     public int? AnoReferencia { get; set; }
+
+    public int ProcessingTimeoutMinutes { get; set; } = 30;
 }
