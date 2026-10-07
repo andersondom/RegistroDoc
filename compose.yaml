@@ -56,6 +56,31 @@ services:
     ports:
       - "127.0.0.1:8082:8080"
 
+  indexer:
+    build:
+      context: .
+      dockerfile: src/RegistroDoc.Indexer/Dockerfile
+    container_name: registrodoc-indexer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Indexer__InputPath: /data/input
+      Indexer__SearchPattern: "*.pdf"
+      Indexer__IncludeSubdirectories: "true"
+      Indexer__ScanIntervalSeconds: "5"
+      Indexer__CodigoCnsServentia: TESTE0001
+      Indexer__TipoDocumento: HabilitacaoCasamento
+      Indexer__AnoReferencia: "2026"
+      Indexer__ProcessingTimeoutMinutes: "30"
+    volumes:
+      - ./data/input:/data/input:ro
+
   web:
     build:
       context: .
