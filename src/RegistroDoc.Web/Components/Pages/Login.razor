@@ -1,0 +1,100 @@
+@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using RegistroDoc.Web.Services
+@rendermode InteractiveServer
+@inject IdentityHubClient IdentityHub
+@inject UserSession Session
+@inject NavigationManager Navigation
+
+<PageTitle>Entrar - RegistroDoc</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <h1 class="h3 mb-4">Entrar no RegistroDoc</h1>
+
+        @if (!string.IsNullOrWhiteSpace(_erro))
+        {
+            <div class="alert alert-danger" role="alert">@_erro</div>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="EntrarAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label" for="email">E-mail</label>
+                <InputText id="email"
+                           class="form-control"
+                           autocomplete="username"
+                           @bind-Value="_model.Email" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="senha">Senha</label>
+                <InputText id="senha"
+                           type="password"
+                           class="form-control"
+                           autocomplete="current-password"
+                           @bind-Value="_model.Password" />
+            </div>
+
+            <button class="btn btn-primary w-100"
+                    type="submit"
+                    disabled="@_carregando">
+                @(_carregando ? "Entrando..." : "Entrar")
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private readonly LoginModel _model = new();
+    private bool _carregando;
+    private string? _erro;
+
+    private async Task EntrarAsync()
+    {
+        _carregando = true;
+        _erro = null;
+
+        try
+        {
+            var result = await IdentityHub.LoginAsync(
+                _model.Email,
+                _model.Password);
+
+            if (!result.Succeeded || result.Response is null)
+            {
+                _erro = result.Error;
+                return;
+            }
+
+            Session.SignIn(
+                result.Response.AccessToken,
+                result.Response.ExpiresAtUtc,
+                result.Response.Email,
+                result.Response.NomeCompleto,
+                result.Response.Roles);
+
+            Navigation.NavigateTo("/pesquisa");
+        }
+        catch (HttpRequestException)
+        {
+            _erro = "Não foi possível conectar ao serviço de autenticação.";
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private sealed class LoginModel
+    {
+        [Required(ErrorMessage = "Informe o e-mail.")]
+        [EmailAddress(ErrorMessage = "Informe um e-mail válido.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Informe a senha.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}
