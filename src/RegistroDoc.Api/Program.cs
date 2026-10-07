@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using RegistroDoc.Infrastructure.Persistence;
 using RegistroDoc.Api.Security;
 using RegistroDoc.Api.Services;
+using RegistroDoc.Domain.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,6 +100,34 @@ builder.Services.AddAuthorization();
 // ============================================================
 
 var app = builder.Build();
+
+// Em desenvolvimento, deixa um banco novo pronto para o fluxo
+// fictício de validação sem depender de preparação manual.
+if (app.Environment.IsDevelopment())
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<RegistroDocDbContext>();
+
+    await db.Database.MigrateAsync();
+
+    const string codigoCnsTeste = "TESTE0001";
+
+    if (!await db.Serventias.AnyAsync(x => x.CodigoCns == codigoCnsTeste))
+    {
+        db.Serventias.Add(new Serventia
+        {
+            Id = Guid.Parse("11111111-1111-4111-8111-111111111111"),
+            Nome = "SERVENTIA FICTICIA - TESTE REGISTRODOC",
+            CodigoCns = codigoCnsTeste,
+            Municipio = "MUNICIPIO FICTICIO",
+            Uf = "SE",
+            Ativa = true,
+            CriadaEmUtc = DateTime.UtcNow
+        });
+
+        await db.SaveChangesAsync();
+    }
+}
 
 // ============================================================
 // Pipeline HTTP
