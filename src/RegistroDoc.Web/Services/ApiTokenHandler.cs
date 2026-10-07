@@ -1,26 +1,24 @@
 using System.Net.Http.Headers;
-using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace RegistroDoc.Web.Services;
 
 public sealed class ApiTokenHandler : DelegatingHandler
 {
-    private readonly AuthenticationStateProvider _authenticationStateProvider;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public ApiTokenHandler(AuthenticationStateProvider authenticationStateProvider)
+    public ApiTokenHandler(IHttpContextAccessor httpContextAccessor)
     {
-        _authenticationStateProvider = authenticationStateProvider;
+        _httpContextAccessor = httpContextAccessor;
     }
 
-    protected override async Task<HttpResponseMessage> SendAsync(
+    protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        var authenticationState =
-            await _authenticationStateProvider.GetAuthenticationStateAsync();
-
         var accessToken =
-            authenticationState.User.FindFirst("registrodoc_access_token")?.Value;
+            _httpContextAccessor.HttpContext?.User
+                .FindFirst("registrodoc_access_token")?.Value;
 
         if (!string.IsNullOrWhiteSpace(accessToken))
         {
@@ -28,6 +26,6 @@ public sealed class ApiTokenHandler : DelegatingHandler
                 new AuthenticationHeaderValue("Bearer", accessToken);
         }
 
-        return await base.SendAsync(request, cancellationToken);
+        return base.SendAsync(request, cancellationToken);
     }
 }
