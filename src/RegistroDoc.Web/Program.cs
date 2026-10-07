@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Antiforgery;
 using RegistroDoc.Web.Components;
 using RegistroDoc.Web.Services;
 
@@ -72,8 +73,12 @@ app.MapStaticAssets();
 app.MapPost("/auth/login", async (
     HttpContext httpContext,
     IdentityHubClient identityHub,
+    IAntiforgery antiforgery,
     CancellationToken cancellationToken) =>
 {
+    if (!await antiforgery.IsRequestValidAsync(httpContext))
+        return Results.BadRequest();
+
     var form = await httpContext.Request.ReadFormAsync(cancellationToken);
     var email = form["email"].ToString();
     var password = form["password"].ToString();
@@ -122,8 +127,11 @@ app.MapPost("/auth/login", async (
     return Results.Redirect("/pesquisa");
 });
 
-app.MapPost("/auth/logout", async (HttpContext httpContext) =>
+app.MapPost("/auth/logout", async (HttpContext httpContext, IAntiforgery antiforgery) =>
 {
+    if (!await antiforgery.IsRequestValidAsync(httpContext))
+        return Results.BadRequest();
+
     await httpContext.SignOutAsync(
         CookieAuthenticationDefaults.AuthenticationScheme);
 
