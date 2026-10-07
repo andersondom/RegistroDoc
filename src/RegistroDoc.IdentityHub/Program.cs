@@ -1,6 +1,10 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using RegistroDoc.IdentityHub.Data;
+using RegistroDoc.IdentityHub.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +12,10 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 builder.Services.AddDataProtection();
+
+//
+// PostgreSQL / IdentityHub
+//
 
 var connectionString =
     builder.Configuration.GetConnectionString("IdentityHub");
@@ -20,6 +28,10 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddDbContext<IdentityHubDbContext>(options =>
     options.UseNpgsql(connectionString));
+
+//
+// ASP.NET Core Identity
+//
 
 builder.Services
     .AddIdentityCore<IdentityHubUser>(options =>
@@ -42,6 +54,77 @@ builder.Services
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
+//
+// JWT
+//
+
+var jwtOptions = new JwtOptions();
+
+builder.Configuration
+    .GetSection(JwtOptions.SectionName)
+    .Bind(jwtOptions);
+
+if (string.IsNullOrWhiteSpace(jwtOptions.Issuer))
+{
+    throw new InvalidOperationException(
+        "Jwt:Issuer não foi configurado.");
+}
+
+if (string.IsNullOrWhiteSpace(jwtOptions.Audience))
+{
+    throw new InvalidOperationException(
+        "Jwt:Audience não foi configurado.");
+}
+
+if (string.IsNullOrWhiteSpace(jwtOptions.SigningKey))
+{
+    throw new InvalidOperationException(
+        "Jwt:SigningKey não foi configurado.");
+}
+
+if (jwtOptions.ExpirationMinutes <= 0)
+{
+    throw new InvalidOperationException(
+        "Jwt:ExpirationMinutes deve ser maior que zero.");
+}
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters =
+            new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = jwtOptions.Issuer,
+
+                ValidateAudience = true,
+                ValidAudience = jwtOptions.Audience,
+
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey =
+                    new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(
+                            jwtOptions.SigningKey)),
+
+                ValidateLifetime = true,
+
+                ClockSkew = TimeSpan.FromSeconds(30)
+            };
+    });
+
+builder.Services.AddAuthorization();
+
+//
+// Serviços do IdentityHub
+//
+
+builder.Services.AddScoped<JwtTokenService>();
+
+//
+// Aplicação
+//
+
 var app = builder.Build();
 
 await IdentityDataInitializer.InitializeAsync(app.Services);
@@ -53,9 +136,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
-
-
-
