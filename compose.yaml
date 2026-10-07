@@ -76,7 +76,16 @@ services:
           cp /data/input/2026/habilitacao-ficticia-2026-001.pdf "$$destino"
           printf '\n%% REGISTRODOC PAGINACAO %s\n' "$$i" >> "$$destino"
         done
-        echo "PDFs ficticios preparados: 23 documentos para validacao de pesquisa e paginacao."
+        # Massa ficticia de benchmark: 2.000 PDFs adicionais, sem dados pessoais.
+        # O comentario apos EOF preserva o PDF-base e produz SHA-256 unico por arquivo.
+        mkdir -p /data/input/benchmark/2026
+        rm -f /data/input/benchmark/2026/*.pdf
+        for i in $(seq -w 1 2000); do
+          destino="/data/input/benchmark/2026/benchmark-ficticio-2026-$i.pdf"
+          cp /data/input/2026/habilitacao-ficticia-2026-001.pdf "$destino"
+          printf '\n%% REGISTRODOC BENCHMARK %s\n' "$i" >> "$destino"
+        done
+        echo "PDFs ficticios preparados: 23 funcionais + 2000 documentos de benchmark."
 
   indexer2026:
     build:
@@ -95,6 +104,34 @@ services:
       DOTNET_ENVIRONMENT: Development
       ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
       Indexer__InputPath: /data/input/2026
+      Indexer__SearchPattern: "*.pdf"
+      Indexer__IncludeSubdirectories: "false"
+      Indexer__ScanIntervalSeconds: "5"
+      Indexer__CodigoCnsServentia: TESTE0001
+      Indexer__TipoDocumento: HabilitacaoCasamento
+      Indexer__AnoReferencia: "2026"
+      Indexer__ProcessingTimeoutMinutes: "30"
+    volumes:
+      - ./data/input:/data/input:ro
+
+
+  indexerbenchmark:
+    build:
+      context: .
+      dockerfile: src/RegistroDoc.Indexer/Dockerfile
+    container_name: registrodoc-indexer-benchmark
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+      sampledata:
+        condition: service_completed_successfully
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Indexer__InputPath: /data/input/benchmark/2026
       Indexer__SearchPattern: "*.pdf"
       Indexer__IncludeSubdirectories: "false"
       Indexer__ScanIntervalSeconds: "5"
