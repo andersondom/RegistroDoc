@@ -81,7 +81,8 @@ public class RegistroDocDbContext : DbContext
 
             entity.HasIndex(x => x.StatusIndexacao);
 
-            entity.HasIndex(x => x.HashSha256);
+            entity.HasIndex(x => x.HashSha256)
+                .IsUnique();
         });
 
         modelBuilder.Entity<PaginaDocumento>(entity =>
@@ -142,3 +143,4 @@ public class RegistroDocDbContext : DbContext
         });
     }
 }
+

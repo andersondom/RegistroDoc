@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RegistroDoc.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using RegistroDoc.Infrastructure.Persistence;
 namespace RegistroDoc.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(RegistroDocDbContext))]
-    partial class RegistroDocDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007025802_AddUniqueIndexDocumentoHashSha256")]
+    partial class AddUniqueIndexDocumentoHashSha256
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
