@@ -107,11 +107,13 @@
         {
             <div class="d-flex gap-2">
                 <button class="btn btn-outline-secondary"
+                        type="button"
                         disabled="@(_resultado.Pagina <= 1 || _carregando)"
                         @onclick="PaginaAnteriorAsync">
                     Anterior
                 </button>
                 <button class="btn btn-outline-secondary"
+                        type="button"
                         disabled="@(_resultado.Pagina >= _resultado.TotalPaginas || _carregando)"
                         @onclick="ProximaPaginaAsync">
                     Próxima
