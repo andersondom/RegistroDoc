@@ -12,10 +12,62 @@ namespace RegistroDoc.Api.Controllers;
 public sealed class DocumentosController : ControllerBase
 {
     private readonly RegistroDocDbContext _db;
+    private readonly IConfiguration _configuration;
 
-    public DocumentosController(RegistroDocDbContext db)
+    public DocumentosController(
+        RegistroDocDbContext db,
+        IConfiguration configuration)
     {
         _db = db;
+        _configuration = configuration;
+    }
+
+    [HttpGet("{id:guid}/arquivo")]
+    public async Task<IActionResult> ObterArquivo(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var documento = await _db.Documentos
+            .AsNoTracking()
+            .Where(x => x.Id == id && x.StatusIndexacao == "Concluido")
+            .Select(x => new { x.NomeArquivo, x.CaminhoRelativo })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (documento is null)
+        {
+            return NotFound();
+        }
+
+        var rootPath = _configuration["Documents:RootPath"];
+        if (string.IsNullOrWhiteSpace(rootPath))
+        {
+            return Problem("Repositório de documentos não configurado.");
+        }
+
+        var root = Path.GetFullPath(rootPath);
+        var arquivo = Path.GetFullPath(
+            Path.Combine(root, documento.CaminhoRelativo));
+
+        var rootComSeparador =
+            root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+
+        if (!arquivo.StartsWith(
+                rootComSeparador,
+                StringComparison.Ordinal))
+        {
+            return BadRequest("Caminho de documento inválido.");
+        }
+
+        if (!System.IO.File.Exists(arquivo))
+        {
+            return NotFound();
+        }
+
+        return PhysicalFile(
+            arquivo,
+            "application/pdf",
+            enableRangeProcessing: true);
     }
 
     [HttpGet("pesquisa")]
