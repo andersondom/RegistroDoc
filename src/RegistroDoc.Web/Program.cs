@@ -6,7 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddSingleton<UserSession>();
+builder.Services.AddScoped<UserSession>();
 builder.Services.AddScoped<ApiTokenHandler>();
 builder.Services.AddScoped<IdentityHubClient>();
 
