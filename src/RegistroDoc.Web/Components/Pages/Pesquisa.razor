@@ -4,15 +4,8 @@
 @using RegistroDoc.Web.Services
 @rendermode InteractiveServer
 @inject IHttpClientFactory HttpClientFactory
-@inject UserSession Session
-@inject NavigationManager Navigation
 
 <PageTitle>Pesquisa - RegistroDoc</PageTitle>
-
-@if (!Session.IsAuthenticated)
-{
-    <div class="alert alert-warning">Sua sessão não está autenticada. Redirecionando para o login...</div>
-}
 
 <h1>Pesquisa de documentos</h1>
 <p class="text-muted">
@@ -119,14 +112,6 @@
 }
 
 @code {
-    protected override void OnAfterRender(bool firstRender)
-    {
-        if (firstRender && !Session.IsAuthenticated)
-        {
-            Navigation.NavigateTo("/login");
-        }
-    }
-
     private readonly FiltroPesquisa _filtro = new();
     private DocumentoSearchResponse? _resultado;
     private bool _carregando;
