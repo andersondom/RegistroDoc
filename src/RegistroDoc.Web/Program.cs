@@ -18,7 +18,12 @@ builder.Services
         options.Cookie.Name = "RegistroDoc.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.Cookie.IsEssential = true;
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+        options.SlidingExpiration = false;
     });
 
 builder.Services.AddAuthorization();
@@ -115,7 +120,7 @@ app.MapPost("/auth/login", async (
         });
 
     return Results.Redirect("/pesquisa");
-}).DisableAntiforgery();
+});
 
 app.MapPost("/auth/logout", async (HttpContext httpContext) =>
 {
@@ -123,7 +128,7 @@ app.MapPost("/auth/logout", async (HttpContext httpContext) =>
         CookieAuthenticationDefaults.AuthenticationScheme);
 
     return Results.Redirect("/login");
-}).DisableAntiforgery();
+}).RequireAuthorization();
 
 app.MapGet("/documentos/{id:guid}/pdf", async (
     Guid id,
