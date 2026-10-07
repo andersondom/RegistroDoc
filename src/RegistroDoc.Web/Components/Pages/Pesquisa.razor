@@ -90,8 +90,15 @@
 
                     @if (!string.IsNullOrWhiteSpace(item.Trecho))
                     {
-                        <p class="mb-0">@item.Trecho</p>
+                        <p>@item.Trecho</p>
                     }
+
+                    <a class="btn btn-outline-primary btn-sm"
+                       href="@($"/documentos/{item.DocumentoId}/pdf")"
+                       target="_blank"
+                       rel="noopener">
+                        Abrir PDF
+                    </a>
                 </div>
             </article>
         }
