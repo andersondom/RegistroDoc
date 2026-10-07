@@ -4,23 +4,23 @@ namespace RegistroDoc.Web.Services;
 
 public sealed class ApiTokenHandler : DelegatingHandler
 {
-    private readonly IConfiguration _configuration;
+    private readonly UserSession _session;
 
-    public ApiTokenHandler(IConfiguration configuration)
+    public ApiTokenHandler(UserSession session)
     {
-        _configuration = configuration;
+        _session = session;
     }
 
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        var token = _configuration["Api:AccessToken"];
-
-        if (!string.IsNullOrWhiteSpace(token))
+        if (_session.IsAuthenticated)
         {
             request.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
+                new AuthenticationHeaderValue(
+                    "Bearer",
+                    _session.AccessToken);
         }
 
         return base.SendAsync(request, cancellationToken);
