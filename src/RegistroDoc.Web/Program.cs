@@ -23,6 +23,7 @@ builder.Services
 
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<UserSession>();
 builder.Services.AddScoped<ApiTokenHandler>();
