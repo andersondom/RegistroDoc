@@ -1,5 +1,6 @@
 @page "/pesquisa"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @attribute [Authorize]
 @using System.Net.Http.Json
 @using RegistroDoc.Contracts.Search
@@ -114,7 +115,8 @@
 }
 
 @code {
-    private readonly FiltroPesquisa _filtro = new();
+    [SupplyParameterFromForm(FormName = "pesquisa")]
+    private FiltroPesquisa _filtro { get; set; } = new();
     private DocumentoSearchResponse? _resultado;
     private bool _carregando;
     private string? _erro;
