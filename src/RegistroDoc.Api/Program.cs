@@ -3,12 +3,18 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RegistroDoc.Infrastructure.Persistence;
+using RegistroDoc.Api.Security;
+using RegistroDoc.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ============================================================
 // Serviços da API
 // ============================================================
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -111,3 +117,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
