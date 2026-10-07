@@ -6,16 +6,26 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddTransient<ApiTokenHandler>();
+builder.Services.AddScoped<UserSession>();
+builder.Services.AddScoped<ApiTokenHandler>();
+builder.Services.AddScoped<IdentityHubClient>();
 
 var apiBaseUrl =
     builder.Configuration["Api:BaseUrl"]
     ?? "http://localhost:8082/";
 
+var identityHubBaseUrl =
+    builder.Configuration["IdentityHub:BaseUrl"]
+    ?? "http://localhost:8081/";
+
 builder.Services.AddHttpClient(
         "RegistroDoc.Api",
         client => client.BaseAddress = new Uri(apiBaseUrl))
     .AddHttpMessageHandler<ApiTokenHandler>();
+
+builder.Services.AddHttpClient(
+    "RegistroDoc.IdentityHub",
+    client => client.BaseAddress = new Uri(identityHubBaseUrl));
 
 var app = builder.Build();
 
