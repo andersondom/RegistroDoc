@@ -125,6 +125,31 @@ app.MapPost("/auth/logout", async (HttpContext httpContext) =>
     return Results.Redirect("/login");
 }).DisableAntiforgery();
 
+app.MapGet("/documentos/{id:guid}/pdf", async (
+    Guid id,
+    IHttpClientFactory httpClientFactory,
+    CancellationToken cancellationToken) =>
+{
+    var client = httpClientFactory.CreateClient("RegistroDoc.Api");
+    using var response = await client.GetAsync(
+        $"api/documentos/{id}/arquivo",
+        HttpCompletionOption.ResponseHeadersRead,
+        cancellationToken);
+
+    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+    {
+        return Results.NotFound();
+    }
+
+    if (!response.IsSuccessStatusCode)
+    {
+        return Results.StatusCode((int)response.StatusCode);
+    }
+
+    var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+    return Results.File(bytes, "application/pdf", enableRangeProcessing: true);
+}).RequireAuthorization();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
