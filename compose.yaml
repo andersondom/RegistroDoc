@@ -80,10 +80,10 @@ services:
         # O comentario apos EOF preserva o PDF-base e produz SHA-256 unico por arquivo.
         mkdir -p /data/input/benchmark/2026
         rm -f /data/input/benchmark/2026/*.pdf
-        for i in $(seq -w 1 2000); do
-          destino="/data/input/benchmark/2026/benchmark-ficticio-2026-$i.pdf"
-          cp /data/input/2026/habilitacao-ficticia-2026-001.pdf "$destino"
-          printf '\n%% REGISTRODOC BENCHMARK %s\n' "$i" >> "$destino"
+        for i in $$(seq -w 1 2000); do
+          destino="/data/input/benchmark/2026/benchmark-ficticio-2026-$$i.pdf"
+          cp /data/input/2026/habilitacao-ficticia-2026-001.pdf "$$destino"
+          printf '\n%% REGISTRODOC BENCHMARK %s\n' "$$i" >> "$$destino"
         done
         echo "PDFs ficticios preparados: 23 funcionais + 2000 documentos de benchmark."
 
