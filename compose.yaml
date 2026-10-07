@@ -185,5 +185,21 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
 
+  tests:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    profiles: ["test"]
+    working_dir: /src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    volumes:
+      - ./:/src
+    command: ["dotnet", "test", "RegistroDoc.slnx", "--configuration", "Release"]
+
 volumes:
   registrodoc_pgdata:
