@@ -161,7 +161,7 @@ app.MapGet("/documentos/{id:guid}/pdf", async (
 
     var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
     return Results.File(bytes, "application/pdf", enableRangeProcessing: true);
-}).RequireAuthorization();
+}).RequireAuthorization(policy => policy.RequireRole("Administrador", "Operador"));
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
