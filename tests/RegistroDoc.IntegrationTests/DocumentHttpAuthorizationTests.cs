@@ -72,6 +72,11 @@ public sealed class DocumentHttpAuthorizationTests : IClassFixture<DocumentHttpA
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Production");
+            // UseSetting is available before Program reads builder.Configuration.
+            builder.UseSetting("ConnectionStrings:RegistroDoc", "Host=localhost;Database=registrodoc_test;Username=test;Password=test");
+            builder.UseSetting("Jwt:Issuer", "registrodoc-http-test");
+            builder.UseSetting("Jwt:Audience", "registrodoc-http-test-client");
+            builder.UseSetting("Jwt:SigningKey", SigningKey);
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
