@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\RegistroDoc.Domain\RegistroDoc.Domain.csproj" />
     <ProjectReference Include="..\..\src\RegistroDoc.Application\RegistroDoc.Application.csproj" />
     <ProjectReference Include="..\..\src\RegistroDoc.Web\RegistroDoc.Web.csproj" />
+    <ProjectReference Include="..\..\src\RegistroDoc.Api\RegistroDoc.Api.csproj" />
   </ItemGroup>
 
 </Project>
