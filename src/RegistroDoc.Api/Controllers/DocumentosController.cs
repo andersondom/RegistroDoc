@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RegistroDoc.Contracts.Search;
 using RegistroDoc.Infrastructure.Persistence;
+using RegistroDoc.Application.Documents;
 
 namespace RegistroDoc.Api.Controllers;
 
@@ -30,7 +31,7 @@ public sealed class DocumentosController : ControllerBase
         var documento = await _db.Documentos
             .AsNoTracking()
             .Where(x => x.Id == id && x.StatusIndexacao == "Concluido")
-            .Select(x => new { x.NomeArquivo, x.CaminhoRelativo })
+            .Select(x => new { x.NomeArquivo, x.CaminhoRelativo, x.AnoReferencia, x.HashSha256 })
             .SingleOrDefaultAsync(cancellationToken);
 
         if (documento is null)
@@ -44,22 +45,19 @@ public sealed class DocumentosController : ControllerBase
             return Problem("Repositório de documentos não configurado.");
         }
 
-        var root = Path.GetFullPath(rootPath);
-        var arquivo = Path.GetFullPath(
-            Path.Combine(root, documento.CaminhoRelativo));
-
-        var rootComSeparador =
-            root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            + Path.DirectorySeparatorChar;
-
-        if (!arquivo.StartsWith(
-                rootComSeparador,
-                StringComparison.Ordinal))
+        string? arquivo;
+        try
+        {
+            arquivo = await DocumentoFileResolver.ResolveAsync(rootPath,
+                documento.CaminhoRelativo, documento.AnoReferencia,
+                documento.HashSha256, cancellationToken);
+        }
+        catch (ArgumentException)
         {
             return BadRequest("Caminho de documento inválido.");
         }
 
-        if (!System.IO.File.Exists(arquivo))
+        if (arquivo is null)
         {
             return NotFound();
         }

@@ -37,3 +37,18 @@ Observação do usuário: depois de usar a paginação, novas pesquisas repetem 
 
 ## Critério de conclusão
 Todos os 10 cenários aprovados na nova homologação, sem regressão de segurança, com testes automatizados relevantes executados ou limitações documentadas.
+
+## Revalidação técnica — 2026-10-08
+
+Branch `fix/pesquisa-paginacao-pdf`. Web/API reconstruídos; banco e volumes do ambiente preservados. Validação executada por `python -u tests/validar_homologacao_http.py`, usando credenciais locais sem imprimir credenciais, cookies ou tokens.
+
+- Página inicial anônima direciona ao login; autenticada direciona à pesquisa. Corrigido Home.razor, que ainda continha o template inicial.
+- Pesquisa anônima bloqueada; login com cookie e acesso autenticado aprovados.
+- JASMIM AZUL/2026: primeira página com 20 itens, segunda com itens distintos, retorno à primeira com os mesmos documentos e links preservando termo/ano.
+- Nova pesquisa GIRASSOL DOURADO/2025 retorna resultados próprios na página 1; ano incorreto retorna vazio. Formulário GET aponta para `/pesquisa`, mesmo quando exibido na página 2.
+- Limpeza testada sem query string e com campos vazios enviados por GET; nenhum filtro antigo nas chamadas/links. Termo inexistente retorna vazio.
+- PDFs conferidos na página 1, página 2 e ano 2025: HTTP 200, `application/pdf`, assinatura `%PDF-`, hash idêntico ao arquivo fictício indicado no resultado, `Cache-Control: no-store` e HTTP 206 para range inicial.
+- Logout direciona ao login; todas as URLs de PDF conferidas ficam bloqueadas e não retornam conteúdo PDF.
+- Suíte completa executada no banco temporário de `compose.validation.yaml`: 6 testes unitários e 5 de integração aprovados (há placeholders preexistentes). Build final sem avisos/erros.
+
+**Limite:** validação HTTP não é homologação visual. Não foi executado navegador automatizado; falta conferir clique dos controles, abertura/renderização do PDF na nova aba e comportamento visual de voltar/avançar. Não declarar homologação manual 10/10 até essa conferência. Sessão expirada também permanece como verificação adicional.

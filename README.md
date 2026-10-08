@@ -35,6 +35,17 @@ O serviço `sampledata` cria 23 PDFs fictícios funcionais e mais 2.000 PDFs fic
 5. Confira a indexação no PostgreSQL; todos os dados de exemplo são fictícios.
 6. Execute `dotnet test RegistroDoc.slnx` em ambiente autorizado, ou em contêiner de SDK, antes da entrega.
 
+## Testes em banco isolado
+
+Após construir a imagem da API com `docker compose build api`, execute:
+
+```powershell
+docker compose -f compose.validation.yaml up --abort-on-container-exit --exit-code-from tests
+python -u tests/validar_homologacao_http.py
+```
+
+O primeiro comando executa a suíte completa em PostgreSQL temporário, separado do ambiente principal e sem portas públicas. Não usa os volumes atuais. O segundo valida o Web/API em execução na porta 8080 com dados fictícios e credenciais locais do ambiente ou `.env`, sem imprimir segredos; requer Python e não substitui conferência visual no navegador.
+
 ## Índice de pesquisa
 
 A migração `20261007180000_AddTrigramSearchIndex` instala a extensão PostgreSQL `pg_trgm` e o índice GIN sobre `PaginasDocumento.TextoExtraido`. Consultas seletivas com `ILIKE '%termo%'` podem utilizar o índice; a escolha do plano é do PostgreSQL. Em benchmark local com 2.023 PDFs fictícios, uma consulta seletiva levou 11,074 ms com varredura sequencial e 0,523 ms com uso forçado do índice. **O segundo tempo não representa uma melhoria automática em condições normais**, pois foi medido com `enable_seqscan = off`.

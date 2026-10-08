@@ -127,9 +127,11 @@ app.MapPost("/auth/logout", async (HttpContext httpContext) =>
 
 app.MapGet("/documentos/{id:guid}/pdf", async (
     Guid id,
+    HttpContext httpContext,
     IHttpClientFactory httpClientFactory,
     CancellationToken cancellationToken) =>
 {
+    httpContext.Response.Headers.CacheControl = "no-store, private";
     var client = httpClientFactory.CreateClient("RegistroDoc.Api");
     using var response = await client.GetAsync(
         $"api/documentos/{id}/arquivo",

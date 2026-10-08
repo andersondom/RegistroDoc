@@ -1,0 +1,56 @@
+name: registrodoc-validation
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: registrodoc_validation
+      POSTGRES_USER: validation
+      POSTGRES_HOST_AUTH_METHOD: trust
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U validation -d registrodoc_validation"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  api-init:
+    image: registrodoc-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__RegistroDoc: "Host=postgres;Database=registrodoc_validation;Username=validation"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        export Jwt__SigningKey="$$(head -c 48 /dev/urandom | base64)"
+        exec dotnet RegistroDoc.Api.dll
+
+  tests:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    depends_on:
+      - api-init
+    environment:
+      ConnectionStrings__RegistroDoc: "Host=postgres;Database=registrodoc_validation;Username=validation"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    volumes:
+      - ./:/source:ro
+    working_dir: /work
+    command:
+      - bash
+      - -ec
+      - |
+        mkdir -p /work
+        tar -C /source --exclude=bin --exclude=obj -cf - src tests RegistroDoc.slnx | tar -C /work -xf -
+        for attempt in {1..60}; do
+          if (echo > /dev/tcp/api-init/8080) 2>/dev/null; then
+            dotnet test RegistroDoc.slnx --configuration Release
+            exit $$?
+          fi
+          sleep 2
+        done
+        echo "API de inicialização não ficou disponível no prazo."
+        exit 1

@@ -7,7 +7,6 @@
 @using System.Net.Http.Json
 @using RegistroDoc.Contracts.Search
 @using RegistroDoc.Web.Services
-@rendermode InteractiveServer
 @inject IHttpClientFactory HttpClientFactory
 
 <PageTitle>Pesquisa - RegistroDoc</PageTitle>
@@ -19,21 +18,21 @@
 
 <div class="card mb-4">
     <div class="card-body">
-        <EditForm Model="_filtro" OnValidSubmit="PesquisarAsync" FormName="pesquisa">
+        <form method="get" action="/pesquisa" data-enhance="false">
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label" for="termo">Texto</label>
-                    <InputText id="termo"
+                    <input id="termo" name="Termo"
                                class="form-control"
-                               @bind-Value="_filtro.Termo"
+                               value="@Termo"
                                placeholder="Nome, termo ou conteúdo do documento" />
                 </div>
 
                 <div class="col-md-3">
                     <label class="form-label" for="ano">Ano</label>
-                    <InputNumber id="ano"
+                    <input id="ano" name="AnoReferencia" type="number"
                                  class="form-control"
-                                 @bind-Value="_filtro.AnoReferencia" />
+                                 value="@AnoReferencia" />
                 </div>
 
                 <div class="col-md-3 d-flex align-items-end">
@@ -44,7 +43,7 @@
                     </button>
                 </div>
             </div>
-        </EditForm>
+        </form>
     </div>
 </div>
 
@@ -124,8 +123,10 @@
 }
 
 @code {
-    [SupplyParameterFromForm(FormName = "pesquisa")]
-    private FiltroPesquisa _filtro { get; set; } = new();
+    [SupplyParameterFromQuery]
+    public string? Termo { get; set; }
+    [SupplyParameterFromQuery]
+    public int? AnoReferencia { get; set; }
     private DocumentoSearchResponse? _resultado;
     private bool _carregando;
     private string? _erro;
@@ -145,20 +146,14 @@
     {
         var parametros = new List<string>();
 
-        if (!string.IsNullOrWhiteSpace(_filtro.Termo))
-            parametros.Add($"Termo={Uri.EscapeDataString(_filtro.Termo.Trim())}");
+        if (!string.IsNullOrWhiteSpace(Termo))
+            parametros.Add($"Termo={Uri.EscapeDataString(Termo.Trim())}");
 
-        if (_filtro.AnoReferencia.HasValue)
-            parametros.Add($"AnoReferencia={_filtro.AnoReferencia.Value}");
+        if (AnoReferencia.HasValue)
+            parametros.Add($"AnoReferencia={AnoReferencia.Value}");
 
         var query = parametros.Count > 0 ? "?" + string.Join("&", parametros) : string.Empty;
         return $"/pesquisa/{Math.Max(1, pagina)}{query}";
-    }
-
-    private async Task PesquisarAsync()
-    {
-        _pagina = 1;
-        await CarregarAsync();
     }
 
     private async Task CarregarAsync()
@@ -175,15 +170,15 @@
                 "TipoDocumento=HabilitacaoCasamento"
             };
 
-            if (!string.IsNullOrWhiteSpace(_filtro.Termo))
+            if (!string.IsNullOrWhiteSpace(Termo))
             {
                 parametros.Add(
-                    $"Termo={Uri.EscapeDataString(_filtro.Termo.Trim())}");
+                    $"Termo={Uri.EscapeDataString(Termo.Trim())}");
             }
 
-            if (_filtro.AnoReferencia.HasValue)
+            if (AnoReferencia.HasValue)
             {
-                parametros.Add($"AnoReferencia={_filtro.AnoReferencia.Value}");
+                parametros.Add($"AnoReferencia={AnoReferencia.Value}");
             }
 
             var client = HttpClientFactory.CreateClient("RegistroDoc.Api");
@@ -195,9 +190,9 @@
                 _erro = "A API não retornou uma resposta válida.";
             }
         }
-        catch (HttpRequestException ex)
+        catch (HttpRequestException)
         {
-            _erro = $"Não foi possível consultar a API: {ex.Message}";
+            _erro = "Não foi possível consultar a API. Entre novamente se a sessão expirou e tente outra vez.";
         }
         finally
         {
@@ -205,9 +200,4 @@
         }
     }
 
-    private sealed class FiltroPesquisa
-    {
-        public string? Termo { get; set; }
-        public int? AnoReferencia { get; set; }
-    }
 }
