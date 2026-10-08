@@ -9,7 +9,7 @@ namespace RegistroDoc.Api.Controllers;
 
 [ApiController]
 [Route("api/documentos")]
-[Authorize]
+[Authorize(Roles = "Administrador,Operador")]
 public sealed class DocumentosController : ControllerBase
 {
     private readonly RegistroDocDbContext _db;
