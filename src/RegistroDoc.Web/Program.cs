@@ -121,11 +121,7 @@ app.MapPost("/auth/login", async (
         new AuthenticationProperties
         {
             IsPersistent = false,
-            ExpiresUtc = new[]
-            {
-                new DateTimeOffset(login.ExpiresAtUtc),
-                DateTimeOffset.UtcNow.AddMinutes(30)
-            }.Min()
+            ExpiresUtc = SessionExpiration.Calculate(login.ExpiresAtUtc, DateTimeOffset.UtcNow)
         });
 
     return Results.Redirect("/pesquisa");
