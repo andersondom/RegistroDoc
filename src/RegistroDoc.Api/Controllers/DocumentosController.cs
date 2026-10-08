@@ -2,24 +2,28 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RegistroDoc.Contracts.Search;
+using RegistroDoc.Api.Services;
 using RegistroDoc.Infrastructure.Persistence;
 
 namespace RegistroDoc.Api.Controllers;
 
 [ApiController]
 [Route("api/documentos")]
-[Authorize]
+[Authorize(Roles = "Administrador,Operador")]
 public sealed class DocumentosController : ControllerBase
 {
     private readonly RegistroDocDbContext _db;
     private readonly IConfiguration _configuration;
+    private readonly IAuditService _auditService;
 
     public DocumentosController(
         RegistroDocDbContext db,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IAuditService auditService)
     {
         _db = db;
         _configuration = configuration;
+        _auditService = auditService;
     }
 
     [HttpGet("{id:guid}/arquivo")]
@@ -63,6 +67,12 @@ public sealed class DocumentosController : ControllerBase
         {
             return NotFound();
         }
+
+        await _auditService.RegistrarAsync(
+            "Documento",
+            id.ToString(),
+            "VisualizarPdf",
+            cancellationToken: cancellationToken);
 
         return PhysicalFile(
             arquivo,

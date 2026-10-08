@@ -1,6 +1,6 @@
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">RegistroDoc</a>
+        <a class="navbar-brand rd-brand" href=""><span class="bi bi-folder2-open me-2" aria-hidden="true"></span>RegistroDoc</a>
     </div>
 </div>
 
@@ -8,24 +8,18 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>
-                Início
-            </NavLink>
-        </div>
-
         <AuthorizeView Context="authContext">
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="pesquisa">
                         <span class="bi bi-search" aria-hidden="true"></span>
-                        Pesquisa
+                        Consultar acervo
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
                     <form method="post" action="/auth/logout">
+                        <AntiforgeryToken />
                         <button class="nav-link btn btn-link text-start w-100"
                                 type="submit">
                             Sair

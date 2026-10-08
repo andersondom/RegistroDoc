@@ -147,3 +147,6 @@ app.MapControllers();
 
 app.Run();
 
+
+// Permite hospedar a API em testes HTTP de integração.
+public partial class Program { }

@@ -3,141 +3,158 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Administrador,Operador")]
 @using System.Net.Http.Json
 @using RegistroDoc.Contracts.Search
 @using RegistroDoc.Web.Services
 @rendermode InteractiveServer
 @inject IHttpClientFactory HttpClientFactory
 
-<PageTitle>Pesquisa - RegistroDoc</PageTitle>
+<PageTitle>Acervo documental | RegistroDoc</PageTitle>
 
-<h1>Pesquisa de documentos</h1>
-<p class="text-muted">
-    Localize habilitações de casamento pelo conteúdo indexado do PDF.
-</p>
-
-<div class="card mb-4">
-    <div class="card-body">
-        <EditForm Model="_filtro" OnValidSubmit="PesquisarAsync" FormName="pesquisa">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label" for="termo">Texto</label>
-                    <InputText id="termo"
-                               class="form-control"
-                               @bind-Value="_filtro.Termo"
-                               placeholder="Nome, termo ou conteúdo do documento" />
-                </div>
-
-                <div class="col-md-3">
-                    <label class="form-label" for="ano">Ano</label>
-                    <InputNumber id="ano"
-                                 class="form-control"
-                                 @bind-Value="_filtro.AnoReferencia" />
-                </div>
-
-                <div class="col-md-3 d-flex align-items-end">
-                    <button class="btn btn-primary w-100"
-                            type="submit"
-                            disabled="@_carregando">
-                        @(_carregando ? "Pesquisando..." : "Pesquisar")
-                    </button>
-                </div>
-            </div>
-        </EditForm>
+<header class="rd-page-header">
+    <div>
+        <div class="rd-eyebrow">ACERVO DIGITAL · HABILITAÇÕES DE CASAMENTO</div>
+        <h1>Pesquisa de documentos</h1>
+        <p>Encontre documentos pelo nome, ano ou texto contido no PDF.</p>
     </div>
-</div>
+    <span class="rd-header-tag">Consulta documental</span>
+</header>
+
+<section class="rd-filter-panel" aria-label="Filtros de pesquisa">
+    <EditForm Model="_filtro" OnValidSubmit="PesquisarAsync" FormName="pesquisa">
+        <div class="rd-filter-grid">
+            <div>
+                <label class="form-label fw-semibold" for="termo">Buscar no conteúdo</label>
+                <InputText id="termo" class="form-control rd-input"
+                           @bind-Value="_filtro!.Termo"
+                           placeholder="Digite um nome, expressão ou palavra-chave" />
+            </div>
+            <div>
+                <label class="form-label fw-semibold" for="ano">Ano do documento</label>
+                <InputNumber id="ano" class="form-control rd-input"
+                             @bind-Value="_filtro!.AnoReferencia"
+                             placeholder="Todos os anos" />
+            </div>
+            <button class="btn btn-primary rd-search-button" type="submit" disabled="@_carregando">
+                <span class="bi bi-search me-2" aria-hidden="true"></span>
+                @(_carregando ? "Pesquisando..." : "Pesquisar")
+            </button>
+        </div>
+    </EditForm>
+    <div class="rd-filter-help">Dica: você pode pesquisar apenas pelo ano ou combinar os dois filtros.</div>
+</section>
 
 @if (!string.IsNullOrWhiteSpace(_erro))
 {
     <div class="alert alert-danger" role="alert">@_erro</div>
 }
 
-@if (_resultado is not null)
+@if (_carregando)
 {
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <strong>@_resultado.TotalItens resultado(s)</strong>
-        <span>Página @_resultado.Pagina de @Math.Max(1, _resultado.TotalPaginas)</span>
-    </div>
-
-    @if (_resultado.Itens.Count == 0)
-    {
-        <div class="alert alert-info">
-            Nenhum documento encontrado para os critérios informados.
+    <div class="rd-empty-state" role="status">Consultando o acervo...</div>
+}
+else if (_resultado is not null)
+{
+    <section aria-label="Resultados da pesquisa">
+        <div class="rd-results-heading">
+            <div>
+                <h2>Documentos encontrados</h2>
+                <p>@_resultado.TotalItens resultado(s) · Página @_resultado.Pagina de @Math.Max(1, _resultado.TotalPaginas)</p>
+            </div>
+            <span class="rd-results-count">@_resultado.TotalItens documento(s)</span>
         </div>
-    }
-    else
-    {
-        @foreach (var item in _resultado.Itens)
+
+        @if (_resultado.Itens.Count == 0)
         {
-            <article class="card mb-3">
-                <div class="card-body">
-                    <h2 class="h5">@item.NomeArquivo</h2>
-                    <div class="text-muted mb-2">
-                        @item.TipoDocumento
-                        @if (item.AnoReferencia.HasValue)
-                        {
-                            <span> · @item.AnoReferencia</span>
-                        }
-                        <span> · @item.QuantidadePaginas página(s)</span>
-                    </div>
-
-                    @if (item.PaginasEncontradas.Count > 0)
-                    {
-                        <div class="mb-2">
-                            Encontrado na(s) página(s):
-                            <strong>@string.Join(", ", item.PaginasEncontradas)</strong>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrWhiteSpace(item.Trecho))
-                    {
-                        <p>@item.Trecho</p>
-                    }
-
-                    <a class="btn btn-outline-primary btn-sm"
-                       href="@($"/documentos/{item.DocumentoId}/pdf")"
-                       target="_blank"
-                       rel="noopener">
-                        Abrir PDF
-                    </a>
-                </div>
-            </article>
-        }
-
-        @if (_resultado.TotalPaginas > 1)
-        {
-            <div class="d-flex gap-2">
-                <a class="btn btn-outline-secondary @(_resultado.Pagina <= 1 ? "disabled" : "")"
-                   href="@ObterUrlPagina(_resultado.Pagina - 1)"
-                   aria-disabled="@(_resultado.Pagina <= 1)">
-                    Anterior
-                </a>
-                <a class="btn btn-outline-secondary @(_resultado.Pagina >= _resultado.TotalPaginas ? "disabled" : "")"
-                   href="@ObterUrlPagina(_resultado.Pagina + 1)"
-                   aria-disabled="@(_resultado.Pagina >= _resultado.TotalPaginas)">
-                    Próxima
-                </a>
+            <div class="rd-empty-state">
+                <strong>Nenhum documento encontrado</strong>
+                <p>Tente outra palavra-chave ou retire o filtro de ano.</p>
             </div>
         }
-    }
+        else
+        {
+            <div class="rd-doc-list">
+                @foreach (var item in _resultado.Itens)
+                {
+                    <article class="rd-doc-item">
+                        <div class="rd-doc-icon" aria-hidden="true"><span class="bi bi-file-earmark-pdf"></span></div>
+                        <div class="rd-doc-content">
+                            <h3 title="@item.NomeArquivo">@item.NomeArquivo</h3>
+                            <div class="rd-doc-meta">
+                                <span>Habilitação de casamento</span>
+                                @if (item.AnoReferencia.HasValue)
+                                {
+                                    <span>Ano @item.AnoReferencia</span>
+                                }
+                                <span>@item.QuantidadePaginas página(s)</span>
+                            </div>
+                            @if (item.PaginasEncontradas.Count > 0)
+                            {
+                                <div class="rd-match-pages">Correspondência na(s) página(s): <strong>@string.Join(", ", item.PaginasEncontradas)</strong></div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.Trecho))
+                            {
+                                <p class="rd-doc-excerpt">@item.Trecho</p>
+                            }
+                        </div>
+                        <div class="rd-doc-actions">
+                            <a class="btn btn-outline-primary"
+                               href="@($"/documentos/{item.DocumentoId}/pdf")"
+                               target="_blank" rel="noopener"
+                               aria-label="@($"Abrir PDF {item.NomeArquivo}")">
+                                <span class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></span> Abrir PDF
+                            </a>
+                        </div>
+                    </article>
+                }
+            </div>
+
+            @if (_resultado.TotalPaginas > 1)
+            {
+                <nav class="rd-pagination" aria-label="Paginação dos resultados">
+                    @if (_resultado.Pagina > 1)
+                    {
+                        <a class="btn btn-outline-secondary" href="@ObterUrlPagina(_resultado.Pagina - 1)">← Anterior</a>
+                    }
+                    <span>Página @_resultado.Pagina de @_resultado.TotalPaginas</span>
+                    @if (_resultado.Pagina < _resultado.TotalPaginas)
+                    {
+                        <a class="btn btn-outline-secondary" href="@ObterUrlPagina(_resultado.Pagina + 1)">Próxima →</a>
+                    }
+                </nav>
+            }
+        }
+    </section>
 }
 
 @code {
     [SupplyParameterFromForm(FormName = "pesquisa")]
-    private FiltroPesquisa _filtro { get; set; } = new();
+    private FiltroPesquisa? _filtro { get; set; }
     private DocumentoSearchResponse? _resultado;
     private bool _carregando;
     private string? _erro;
     [Parameter]
     public int Pagina { get; set; } = 1;
 
+    [SupplyParameterFromQuery(Name = "Termo")]
+    public string? TermoQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "AnoReferencia")]
+    public int? AnoQuery { get; set; }
+
     private int _pagina = 1;
 
 
     protected override async Task OnParametersSetAsync()
     {
+        _filtro ??= new FiltroPesquisa();
         _pagina = Math.Max(1, Pagina);
+        if (_pagina > 1 || TermoQuery is not null || AnoQuery.HasValue)
+        {
+            _filtro!.Termo = TermoQuery;
+            _filtro!.AnoReferencia = AnoQuery;
+        }
         await CarregarAsync();
     }
 
@@ -145,11 +162,11 @@
     {
         var parametros = new List<string>();
 
-        if (!string.IsNullOrWhiteSpace(_filtro.Termo))
-            parametros.Add($"Termo={Uri.EscapeDataString(_filtro.Termo.Trim())}");
+        if (!string.IsNullOrWhiteSpace(_filtro!.Termo))
+            parametros.Add($"Termo={Uri.EscapeDataString(_filtro!.Termo.Trim())}");
 
-        if (_filtro.AnoReferencia.HasValue)
-            parametros.Add($"AnoReferencia={_filtro.AnoReferencia.Value}");
+        if (_filtro!.AnoReferencia.HasValue)
+            parametros.Add($"AnoReferencia={_filtro!.AnoReferencia.Value}");
 
         var query = parametros.Count > 0 ? "?" + string.Join("&", parametros) : string.Empty;
         return $"/pesquisa/{Math.Max(1, pagina)}{query}";
@@ -175,15 +192,15 @@
                 "TipoDocumento=HabilitacaoCasamento"
             };
 
-            if (!string.IsNullOrWhiteSpace(_filtro.Termo))
+            if (!string.IsNullOrWhiteSpace(_filtro!.Termo))
             {
                 parametros.Add(
-                    $"Termo={Uri.EscapeDataString(_filtro.Termo.Trim())}");
+                    $"Termo={Uri.EscapeDataString(_filtro!.Termo.Trim())}");
             }
 
-            if (_filtro.AnoReferencia.HasValue)
+            if (_filtro!.AnoReferencia.HasValue)
             {
-                parametros.Add($"AnoReferencia={_filtro.AnoReferencia.Value}");
+                parametros.Add($"AnoReferencia={_filtro!.AnoReferencia.Value}");
             }
 
             var client = HttpClientFactory.CreateClient("RegistroDoc.Api");

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Antiforgery;
 using RegistroDoc.Web.Components;
 using RegistroDoc.Web.Services;
 
@@ -18,7 +19,12 @@ builder.Services
         options.Cookie.Name = "RegistroDoc.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.Cookie.IsEssential = true;
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+        options.SlidingExpiration = false;
     });
 
 builder.Services.AddAuthorization();
@@ -67,8 +73,12 @@ app.MapStaticAssets();
 app.MapPost("/auth/login", async (
     HttpContext httpContext,
     IdentityHubClient identityHub,
+    IAntiforgery antiforgery,
     CancellationToken cancellationToken) =>
 {
+    if (!await antiforgery.IsRequestValidAsync(httpContext))
+        return Results.BadRequest();
+
     var form = await httpContext.Request.ReadFormAsync(cancellationToken);
     var email = form["email"].ToString();
     var password = form["password"].ToString();
@@ -111,19 +121,22 @@ app.MapPost("/auth/login", async (
         new AuthenticationProperties
         {
             IsPersistent = false,
-            ExpiresUtc = new DateTimeOffset(login.ExpiresAtUtc)
+            ExpiresUtc = SessionExpiration.Calculate(login.ExpiresAtUtc, DateTimeOffset.UtcNow)
         });
 
     return Results.Redirect("/pesquisa");
-}).DisableAntiforgery();
+});
 
-app.MapPost("/auth/logout", async (HttpContext httpContext) =>
+app.MapPost("/auth/logout", async (HttpContext httpContext, IAntiforgery antiforgery) =>
 {
+    if (!await antiforgery.IsRequestValidAsync(httpContext))
+        return Results.BadRequest();
+
     await httpContext.SignOutAsync(
         CookieAuthenticationDefaults.AuthenticationScheme);
 
     return Results.Redirect("/login");
-}).DisableAntiforgery();
+}).RequireAuthorization();
 
 app.MapGet("/documentos/{id:guid}/pdf", async (
     Guid id,
@@ -148,7 +161,7 @@ app.MapGet("/documentos/{id:guid}/pdf", async (
 
     var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
     return Results.File(bytes, "application/pdf", enableRangeProcessing: true);
-}).RequireAuthorization();
+}).RequireAuthorization(policy => policy.RequireRole("Administrador", "Operador"));
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
