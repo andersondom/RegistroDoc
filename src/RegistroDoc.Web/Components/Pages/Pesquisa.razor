@@ -27,13 +27,13 @@
             <div>
                 <label class="form-label fw-semibold" for="termo">Buscar no conteúdo</label>
                 <InputText id="termo" class="form-control rd-input"
-                           @bind-Value="_filtro.Termo"
+                           @bind-Value="_filtro!.Termo"
                            placeholder="Digite um nome, expressão ou palavra-chave" />
             </div>
             <div>
                 <label class="form-label fw-semibold" for="ano">Ano do documento</label>
                 <InputNumber id="ano" class="form-control rd-input"
-                             @bind-Value="_filtro.AnoReferencia"
+                             @bind-Value="_filtro!.AnoReferencia"
                              placeholder="Todos os anos" />
             </div>
             <button class="btn btn-primary rd-search-button" type="submit" disabled="@_carregando">
@@ -130,7 +130,7 @@ else if (_resultado is not null)
 
 @code {
     [SupplyParameterFromForm(FormName = "pesquisa")]
-    private FiltroPesquisa _filtro { get; set; } = new();
+    private FiltroPesquisa? _filtro { get; set; }
     private DocumentoSearchResponse? _resultado;
     private bool _carregando;
     private string? _erro;
@@ -148,11 +148,12 @@ else if (_resultado is not null)
 
     protected override async Task OnParametersSetAsync()
     {
+        _filtro ??= new FiltroPesquisa();
         _pagina = Math.Max(1, Pagina);
         if (_pagina > 1 || TermoQuery is not null || AnoQuery.HasValue)
         {
-            _filtro.Termo = TermoQuery;
-            _filtro.AnoReferencia = AnoQuery;
+            _filtro!.Termo = TermoQuery;
+            _filtro!.AnoReferencia = AnoQuery;
         }
         await CarregarAsync();
     }
@@ -161,11 +162,11 @@ else if (_resultado is not null)
     {
         var parametros = new List<string>();
 
-        if (!string.IsNullOrWhiteSpace(_filtro.Termo))
-            parametros.Add($"Termo={Uri.EscapeDataString(_filtro.Termo.Trim())}");
+        if (!string.IsNullOrWhiteSpace(_filtro!.Termo))
+            parametros.Add($"Termo={Uri.EscapeDataString(_filtro!.Termo.Trim())}");
 
-        if (_filtro.AnoReferencia.HasValue)
-            parametros.Add($"AnoReferencia={_filtro.AnoReferencia.Value}");
+        if (_filtro!.AnoReferencia.HasValue)
+            parametros.Add($"AnoReferencia={_filtro!.AnoReferencia.Value}");
 
         var query = parametros.Count > 0 ? "?" + string.Join("&", parametros) : string.Empty;
         return $"/pesquisa/{Math.Max(1, pagina)}{query}";
@@ -191,15 +192,15 @@ else if (_resultado is not null)
                 "TipoDocumento=HabilitacaoCasamento"
             };
 
-            if (!string.IsNullOrWhiteSpace(_filtro.Termo))
+            if (!string.IsNullOrWhiteSpace(_filtro!.Termo))
             {
                 parametros.Add(
-                    $"Termo={Uri.EscapeDataString(_filtro.Termo.Trim())}");
+                    $"Termo={Uri.EscapeDataString(_filtro!.Termo.Trim())}");
             }
 
-            if (_filtro.AnoReferencia.HasValue)
+            if (_filtro!.AnoReferencia.HasValue)
             {
-                parametros.Add($"AnoReferencia={_filtro.AnoReferencia.Value}");
+                parametros.Add($"AnoReferencia={_filtro!.AnoReferencia.Value}");
             }
 
             var client = HttpClientFactory.CreateClient("RegistroDoc.Api");
