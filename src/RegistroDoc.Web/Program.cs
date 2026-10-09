@@ -2,24 +2,25 @@ using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.DataProtection;
 using RegistroDoc.Web.Components;
 using RegistroDoc.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var dataProtection = builder.Services.AddDataProtection()
+    .SetApplicationName("RegistroDoc.Web");
+var keysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(keysPath))
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.LoginPath = "/login";
-        options.Cookie.Name = "RegistroDoc.Auth";
-        options.Cookie.HttpOnly = true;
-        options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-    });
+    .AddCookie(SessionCookieConfiguration.Configure);
 
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
@@ -66,9 +67,19 @@ app.MapStaticAssets();
 
 app.MapPost("/auth/login", async (
     HttpContext httpContext,
+    IAntiforgery antiforgery,
     IdentityHubClient identityHub,
     CancellationToken cancellationToken) =>
 {
+    try
+    {
+        await antiforgery.ValidateRequestAsync(httpContext);
+    }
+    catch (AntiforgeryValidationException)
+    {
+        return Results.BadRequest();
+    }
+
     var form = await httpContext.Request.ReadFormAsync(cancellationToken);
     var email = form["email"].ToString();
     var password = form["password"].ToString();
@@ -115,15 +126,24 @@ app.MapPost("/auth/login", async (
         });
 
     return Results.Redirect("/pesquisa");
-}).DisableAntiforgery();
+});
 
-app.MapPost("/auth/logout", async (HttpContext httpContext) =>
+app.MapPost("/auth/logout", async (HttpContext httpContext, IAntiforgery antiforgery) =>
 {
+    try
+    {
+        await antiforgery.ValidateRequestAsync(httpContext);
+    }
+    catch (AntiforgeryValidationException)
+    {
+        return Results.BadRequest();
+    }
+
     await httpContext.SignOutAsync(
         CookieAuthenticationDefaults.AuthenticationScheme);
 
     return Results.Redirect("/login");
-}).DisableAntiforgery();
+}).RequireAuthorization();
 
 app.MapGet("/documentos/{id:guid}/pdf", async (
     Guid id,

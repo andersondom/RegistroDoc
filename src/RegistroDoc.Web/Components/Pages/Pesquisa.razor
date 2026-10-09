@@ -11,12 +11,15 @@
 
 <PageTitle>Pesquisa - RegistroDoc</PageTitle>
 
+<header class="search-heading">
+<span class="eyebrow">EXPLORE SEU ACERVO</span>
 <h1>Pesquisa de documentos</h1>
-<p class="text-muted">
+<p class="text-muted mb-0">
     Localize habilitações de casamento pelo conteúdo indexado do PDF.
 </p>
+</header>
 
-<div class="card mb-4">
+<div class="card mb-4 search-filter">
     <div class="card-body">
         <form method="get" action="/pesquisa" data-enhance="false">
             <div class="row g-3">
@@ -67,6 +70,11 @@
     }
     else
     {
+        @if (_resultado.TotalPaginas > 1)
+        {
+            @ControlesPaginacao
+        }
+
         @foreach (var item in _resultado.Itens)
         {
             <article class="card mb-3">
@@ -106,23 +114,26 @@
 
         @if (_resultado.TotalPaginas > 1)
         {
-            <div class="d-flex gap-2">
-                <a class="btn btn-outline-secondary @(_resultado.Pagina <= 1 ? "disabled" : "")"
-                   href="@ObterUrlPagina(_resultado.Pagina - 1)"
-                   aria-disabled="@(_resultado.Pagina <= 1)">
-                    Anterior
-                </a>
-                <a class="btn btn-outline-secondary @(_resultado.Pagina >= _resultado.TotalPaginas ? "disabled" : "")"
-                   href="@ObterUrlPagina(_resultado.Pagina + 1)"
-                   aria-disabled="@(_resultado.Pagina >= _resultado.TotalPaginas)">
-                    Próxima
-                </a>
-            </div>
+            @ControlesPaginacao
         }
     }
 }
 
 @code {
+    private RenderFragment ControlesPaginacao => @<nav class="d-flex gap-2 mb-3"
+        aria-label="Paginação dos resultados">
+        <a class="btn btn-outline-secondary @(_resultado!.Pagina <= 1 ? "disabled" : "")"
+           href="@ObterUrlPagina(_resultado.Pagina - 1)"
+           aria-disabled="@(_resultado.Pagina <= 1)">
+            Anterior
+        </a>
+        <a class="btn btn-outline-secondary @(_resultado.Pagina >= _resultado.TotalPaginas ? "disabled" : "")"
+           href="@ObterUrlPagina(_resultado.Pagina + 1)"
+           aria-disabled="@(_resultado.Pagina >= _resultado.TotalPaginas)">
+            Próxima
+        </a>
+    </nav>;
+
     [SupplyParameterFromQuery]
     public string? Termo { get; set; }
     [SupplyParameterFromQuery]

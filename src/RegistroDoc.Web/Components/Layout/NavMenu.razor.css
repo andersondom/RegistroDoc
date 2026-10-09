@@ -5,7 +5,7 @@
     height: 2.5rem;
     color: white;
     position: absolute;
-    top: 0.5rem;
+    top: 1.5rem;
     right: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(255, 255, 255, 0.1);
@@ -16,12 +16,37 @@
 }
 
 .top-row {
-    min-height: 3.5rem;
-    background-color: rgba(0,0,0,0.4);
+    min-height: 5.5rem;
+    background-color: rgba(255,255,255,.025);
+    border-bottom: 1px solid rgba(255,255,255,.08);
 }
 
 .navbar-brand {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.navbar-brand small {
+    display: block;
+    font-size: .58rem;
+    letter-spacing: .2em;
+    color: #9fb7d7;
+    margin-top: .25rem;
+}
+
+.brand-mark {
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: .8rem;
+    font-size: .95rem;
+    color: white;
+    background: linear-gradient(135deg, #635bff, #0e7490);
+    box-shadow: 0 4px 18px rgba(99, 91, 255, .3);
 }
 
 .bi {
@@ -60,19 +85,21 @@
     }
 
     .nav-item ::deep .nav-link {
-        color: #d7d7d7;
+        color: #c4d2e7;
         background: none;
         border: none;
-        border-radius: 4px;
+        border-radius: 12px;
         height: 3rem;
         display: flex;
         align-items: center;
         line-height: 3rem;
         width: 100%;
+        transition: background .2s ease, box-shadow .2s ease;
     }
 
 .nav-item ::deep a.active {
-    background-color: rgba(255,255,255,0.37);
+    background: linear-gradient(100deg, rgba(99,91,255,.65), rgba(14,116,144,.4));
+    box-shadow: inset 3px 0 #67e8f9, 0 6px 20px rgba(0,0,0,.1);
     color: white;
 }
 
@@ -99,7 +126,7 @@
         display: block;
 
         /* Allow sidebar to scroll for tall menus */
-        height: calc(100vh - 3.5rem);
+        height: calc(100vh - 5.5rem);
         overflow-y: auto;
     }
 }

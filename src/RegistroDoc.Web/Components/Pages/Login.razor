@@ -2,9 +2,28 @@
 
 <PageTitle>Entrar - RegistroDoc</PageTitle>
 
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-4">
-        <h1 class="h3 mb-4">Entrar no RegistroDoc</h1>
+<div class="login-stage">
+    <section class="login-story" aria-labelledby="login-intro">
+        <span class="eyebrow">REGISTRODOC · ACERVO DIGITAL</span>
+        <h1 id="login-intro">Cada documento.<br /><span>Uma história.</span></h1>
+        <p>Encontre a informação que você precisa e consulte os documentos do seu acervo em um só lugar.</p>
+        <div class="document-art" aria-hidden="true">
+            <div class="document-sheet sheet-back"></div>
+            <div class="document-sheet sheet-front">
+                <span class="document-symbol">RD</span>
+                <i></i><i></i><i></i><i></i>
+                <span class="document-seal">✓</span>
+            </div>
+            <span class="art-orbit orbit-one"></span>
+            <span class="art-orbit orbit-two"></span>
+        </div>
+        <span class="story-caption">Organização para o acervo. Agilidade para a rotina.</span>
+    </section>
+    <section class="login-panel" aria-labelledby="login-title">
+        <span class="login-emblem" aria-hidden="true">RD</span>
+        <span class="eyebrow">BEM-VINDO</span>
+        <h2 id="login-title">Entrar no RegistroDoc</h2>
+        <p class="text-muted mb-4">Acesse sua conta para consultar o acervo.</p>
 
         @if (!string.IsNullOrWhiteSpace(MensagemErro))
         {
@@ -12,6 +31,7 @@
         }
 
         <form method="post" action="/auth/login">
+            <AntiforgeryToken />
             <div class="mb-3">
                 <label class="form-label" for="email">E-mail</label>
                 <input id="email"
@@ -36,7 +56,8 @@
                 Entrar
             </button>
         </form>
-    </div>
+        <p class="login-footnote">Pesquisa e documentos disponíveis mediante autenticação.</p>
+    </section>
 </div>
 
 @code {

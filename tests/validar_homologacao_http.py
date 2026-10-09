@@ -15,7 +15,22 @@ import urllib.parse
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = "http://localhost:8080"
+
+
+def web_port():
+    value = os.environ.get("WEB_PORT")
+    env = ROOT / ".env"
+    if value is None and env.exists():
+        for line in env.read_text(encoding="utf-8-sig").splitlines():
+            key, sep, configured = line.partition("=")
+            if sep and key.strip() == "WEB_PORT":
+                value = configured.strip().strip("\"'")
+    port = int(value or "8080")
+    assert 1 <= port <= 65535, "WEB_PORT inválida"
+    return port
+
+
+BASE = f"http://127.0.0.1:{web_port()}"
 
 
 def credentials():
@@ -61,6 +76,13 @@ def pdf_links(text):
     return re.findall(r'href="(/documentos/[a-f0-9-]+/pdf)"', text)
 
 
+def antiforgery_token(body):
+    text = body.decode("utf-8") if isinstance(body, bytes) else body
+    match = re.search(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"', text)
+    assert match, "Token antiforgery ausente no formulário"
+    return html.unescape(match.group(1))
+
+
 def check_pdf(client, text):
     link = pdf_links(text)[0]
     status, url, headers, body = request(client, link)
@@ -86,7 +108,12 @@ def main():
     assert status == 200 and "/login" in url, "Pesquisa anônima não bloqueada"
     print("OK: início e pesquisa anônima exigem login")
     email, password = credentials()
-    status, url, _, body = request(client, "/auth/login", urllib.parse.urlencode({"email": email, "password": password}).encode())
+    status, _, _, _ = request(client, "/auth/login", urllib.parse.urlencode({"email": email, "password": password}).encode())
+    assert status == 400, "Login sem token antiforgery não foi rejeitado"
+    _, _, _, login_body = request(client, "/login")
+    status, _, _, _ = request(client, "/auth/login", urllib.parse.urlencode({"email": email, "password": password, "__RequestVerificationToken": "invalido"}).encode())
+    assert status == 400, "Login com token inválido não foi rejeitado"
+    status, url, _, body = request(client, "/auth/login", urllib.parse.urlencode({"email": email, "password": password, "__RequestVerificationToken": antiforgery_token(login_body)}).encode())
     assert status == 200 and "/pesquisa" in url and "alert-danger" not in body.decode(), "Login falhou"
     status, url, _, _ = request(client, "/")
     assert status == 200 and "/pesquisa" in url, "Início autenticado não direciona à pesquisa"
@@ -94,6 +121,14 @@ def main():
     first = search(client, 1, "JASMIM AZUL", 2026)
     second = search(client, 2, "JASMIM AZUL", 2026)
     assert len(pdf_links(first)) == 20 and pdf_links(second), "Massa insuficiente para paginação"
+    for text in (first, second):
+        text = html.unescape(text)
+        controls = list(re.finditer(r'<nav[^>]*aria-label="Paginação dos resultados".*?</nav>', text, re.S))
+        assert len(controls) == 2, "Paginação deve aparecer no topo e no final"
+        cards = list(re.finditer(r'<article class="card mb-3".*?</article>', text, re.S))
+        assert controls[0].end() <= cards[0].start() and controls[1].start() >= cards[-1].end(), "Posição da paginação incorreta"
+        assert controls[0].group() == controls[1].group(), "Controles de paginação divergentes"
+        assert "bi-house-door-fill-nav-menu" not in text and not re.search(r'>\s*Início\s*<', text), "Menu mantém item Início redundante"
     assert not set(pdf_links(first)) & set(pdf_links(second)), "Paginação repetiu documentos"
     assert pdf_links(search(client, 1, "JASMIM AZUL", 2026)) == pdf_links(first), "Retorno alterou resultados"
     hrefs = [html.unescape(value) for value in re.findall(r'href="([^"]+)"', second)]
@@ -110,7 +145,13 @@ def main():
     print("OK: nova pesquisa, troca de ano, limpeza e resultados vazios")
     links = [check_pdf(client, text) for text in (first, second, changed)]
     print("OK: PDF correto nas duas páginas e no ano 2025; MIME, hash, cache e range")
-    status, url, _, _ = request(client, "/auth/logout", b"")
+    status, _, _, _ = request(client, "/auth/logout", b"")
+    assert status == 400, "Logout sem token antiforgery não foi rejeitado"
+    status, _, _, _ = request(client, "/auth/logout", urllib.parse.urlencode({"__RequestVerificationToken": "invalido"}).encode())
+    assert status == 400, "Logout com token inválido não foi rejeitado"
+    authenticated = search(client, 1)
+    print("OK: login/logout rejeitam token ausente ou inválido; sessão preservada")
+    status, url, _, _ = request(client, "/auth/logout", urllib.parse.urlencode({"__RequestVerificationToken": antiforgery_token(authenticated)}).encode())
     assert status == 200 and "/login" in url, "Logout falhou"
     for link in links:
         status, url, headers, body = request(client, link)

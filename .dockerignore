@@ -13,6 +13,14 @@ data
 storage
 temp
 backups
+artifacts
+**/__pycache__
+.aws
+.codex
+.agents
+*.pfx
+*.pem
+*.key
 
 *.pdf
 *.tif

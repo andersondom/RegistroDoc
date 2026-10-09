@@ -28,10 +28,30 @@ public static class DocumentoFileResolver
         foreach (var candidate in candidates)
         {
             if (!File.Exists(candidate)) continue;
+            RejectLinks(root, candidate);
             await using var stream = File.OpenRead(candidate);
             var actual = Convert.ToHexString(await SHA256.HashDataAsync(stream, cancellationToken));
             if (string.Equals(actual, hash, StringComparison.OrdinalIgnoreCase)) return candidate;
         }
         return null;
+    }
+
+    private static void RejectLinks(string root, string candidate)
+    {
+        if ((File.GetAttributes(candidate) & FileAttributes.ReparsePoint) != 0)
+            throw new ArgumentException("Caminho de documento inválido.");
+
+        var directory = new DirectoryInfo(Path.GetDirectoryName(candidate)!);
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        while (directory is not null)
+        {
+            if ((directory.Attributes & FileAttributes.ReparsePoint) != 0)
+                throw new ArgumentException("Caminho de documento inválido.");
+            if (string.Equals(directory.FullName.TrimEnd(Path.DirectorySeparatorChar),
+                root.TrimEnd(Path.DirectorySeparatorChar), comparison)) return;
+            directory = directory.Parent;
+        }
+        throw new ArgumentException("Caminho de documento inválido.");
     }
 }
