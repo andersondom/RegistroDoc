@@ -1,6 +1,6 @@
 # Homologação funcional — RegistroDoc
 
-Relato do usuário recebido em 2026-10-08. Resultados manuais informados, ainda não reexecutados após correções.
+Histórico do relato recebido em 2026-10-08. A tabela abaixo registra o estado anterior às correções; o resultado atual consta nos marcos posteriores.
 
 | Nº | Cenário | Resultado informado |
 |---|---|---|
@@ -52,3 +52,38 @@ Branch `fix/pesquisa-paginacao-pdf`. Web/API reconstruídos; banco e volumes do 
 - Suíte completa executada no banco temporário de `compose.validation.yaml`: 6 testes unitários e 5 de integração aprovados (há placeholders preexistentes). Build final sem avisos/erros.
 
 **Limite:** validação HTTP não é homologação visual. Não foi executado navegador automatizado; falta conferir clique dos controles, abertura/renderização do PDF na nova aba e comportamento visual de voltar/avançar. Não declarar homologação manual 10/10 até essa conferência. Sessão expirada também permanece como verificação adicional.
+
+## Validação adicional de segurança e navegador — 2026-10-08
+
+- Login e logout passaram a validar antiforgery explicitamente; formulários incluem `AntiforgeryToken`. Logout exige autenticação.
+- `python -u tests/validar_homologacao_http.py`: aprovado após reconstrução do Web. Além dos cenários anteriores, rejeita login/logout com token ausente ou inválido (HTTP 400), confirma sessão preservada após logout rejeitado e confirma saída com token válido.
+- `python -u tests/validar_homologacao_navegador.py`: aprovado no Microsoft Edge headless com perfil próprio. Exercita formulários reais, cliques próxima/anterior, voltar/avançar, nova pesquisa na página 2 retornando à página 1, PDF em aba separada e logout com bloqueio da URL anterior.
+- Pesquisa sem excesso horizontal nos viewports de 1440 e 390 px; capturas locais em `artifacts/visual`. Captura móvel inspecionada nesta etapa.
+- `dotnet build RegistroDoc.slnx --no-restore`: aprovado, zero avisos e erros. Suíte em `compose.validation.yaml`: 6 unitários e 5 de integração aprovados.
+- Testes unitários no Windows bloqueados por Controle de Aplicativo em duas tentativas, inclusive fora da sandbox; resultado aprovado acima corresponde à execução Linux no Docker.
+
+Este marco substitui a ausência de navegador automatizado registrada anteriormente. Não representa homologação manual 10/10: aprovação humana do visual, renderização do PDF no visualizador e sessão expirada ainda precisam de conferência. O teste de aba verifica sua abertura na URL esperada; integridade, MIME e range do PDF são conferidos pelo roteiro HTTP.
+
+## Expiração de sessão e revalidação — 2026-10-09
+
+- Desativada a renovação automática do cookie para preservar o vencimento fornecido pelo IdentityHub; antes, a validade do cookie podia avançar além da validade do token da API.
+- `SessionExpirationTests` usa o handler real de cookies, proteção de dados efêmera e relógio controlado. Confirma autenticação antes do vencimento, ausência de novo cookie após acesso na segunda metade da sessão e rejeição/redirecionamento ao login após expiração. Não altera relógio do sistema nem banco.
+- `dotnet build RegistroDoc.slnx --no-restore`: execução final aprovada, zero avisos/erros.
+- `docker compose -f compose.validation.yaml up --abort-on-container-exit --exit-code-from tests`: execução final aprovada, 7 unitários e 5 de integração. Primeira execução encontrou erro na asserção do teste novo (StringValues vazio convertido em string nula), corrigido antes da execução final.
+- Web reconstruído. Windows reservou a faixa 8069–8168 e bloqueou o início na porta 8080. Configurado `WEB_PORT=18080` somente no `.env` local; Compose mantém padrão 8080 e loopback. Banco e volumes preservados.
+- Roteiros HTTP e Edge reexecutados na porta 18080, aprovados. Incluem paginação, histórico, troca de filtros, integridade/range de PDF, antiforgery e bloqueio após logout.
+- Expiração coberta em teste automatizado do handler; expiração em navegador com IdentityHub real e renderização do PDF no visualizador continuam fora desta execução. Aprovação manual permanece pendente.
+
+## Fechamento funcional do MVP — 2026-10-09
+
+- Usuário respondeu **“Visual e leitura do PDF aprovados”** após conferência em http://localhost:18080. Aprovação humana registrada separadamente dos testes automatizados; não inferir execução manual de todos os dez cenários.
+- Todos os dez cenários do roteiro têm cobertura técnica aprovada nos roteiros HTTP/Edge; conferência visual e leitura do PDF foram aprovadas pelo usuário.
+- `python -u tests/validar_sessao_expirada.py`: expiração real no Edge com IdentityHub configurado para um minuto em banco temporário separado, sem mudar a validade das sessões do ambiente principal. Acesso antes do prazo e após metade da duração; após vencer, pesquisa e rota de PDF direcionam ao login sem logout manual. A rota PDF usa ID fictício inexistente: HTTP 404 autenticado antes do vencimento e login depois, sem precisar de documentos reais.
+- O mesmo roteiro ensaia `pg_dump`/`pg_restore` em banco separado e compara quantidade de tabelas, usuário e serventia fictícios. Não restaura sobre o banco principal.
+- Execução final também reinicia o Web isolado após login e confirma que a sessão permanece válida com chaves persistentes; depois confirma o vencimento original. Chaves locais somente em artifacts/validation, ignorado pelo Git/Docker.
+- Proteção adicional de PDF rejeita links simbólicos em arquivo/pastas da raiz; dois testes executados no Docker Linux. Permissões do acervo continuam necessárias para impedir alteração concorrente de arquivos entre conferência e abertura.
+- Build final: zero avisos/erros. Suíte final em banco temporário: 9 unitários e 5 de integração, zero falhas.
+- Roteiros HTTP/Edge aprovados na versão final do Web/API. `validar_configuracao_producao.py` aprovado: HTTPS, host permitido, serviços internos sem portas publicadas, certificados/acervo somente leitura, chaves persistentes e limites de logs.
+- Carga local: 40 consultas com concorrência 4, zero falhas; 3,734 s no total, p50 232,61 ms, p95 1.585,64 ms, máximo 1.674,99 ms. Medição realizada durante outras verificações na mesma máquina; não representa meta/garantia para o servidor ou ensaio de 100 mil PDFs.
+
+Critérios funcionais do MVP atendidos com dados fictícios e evidências acima. Implantação no servidor e requisitos de operação/auditoria/acervo real separados em OPERACAO.md. Merge na main pendente de autorização.

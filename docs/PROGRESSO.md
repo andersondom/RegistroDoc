@@ -49,6 +49,40 @@ Branch: `fix/pesquisa-paginacao-pdf`, criada a partir de `docs/handoff-codex-202
 - `python -u tests/validar_homologacao_http.py`: aprovado; cobre também redirecionamento inicial autenticado e GET com campos vazios. Validação por HTTP, sem navegador automatizado.
 - Alterações preparadas para revisão na branch de correção; sem merge na main.
 
+## Ajustes de usabilidade — 2026-10-08
+
+- Solicitação do usuário: evitar rolagem até o fim para paginar e remover a navegação Início redundante.
+- Pesquisa.razor exibe os mesmos controles Anterior/Próxima acima e abaixo dos resultados. Um RenderFragment compartilhado mantém URLs, filtros e estados desabilitados iguais nas duas posições. Sem paginação em resultados vazios ou de página única.
+- NavMenu.razor remove o item Início. A marca RegistroDoc permanece como acesso à raiz; os itens autenticados são Pesquisa/Sair e o item anônimo é Entrar.
+- Web atualizado com `docker compose up -d --build --no-deps web`, preservando banco e volumes.
+- `dotnet build RegistroDoc.slnx --no-restore`: aprovado, zero avisos/erros.
+- `dotnet test tests/RegistroDoc.UnitTests/RegistroDoc.UnitTests.csproj --no-build --no-restore`: 6 aprovados, zero falhas.
+- `python -u tests/validar_homologacao_http.py`: aprovado; roteiro ampliado confere duas paginações idênticas antes/depois dos cards de resultado e ausência do item Início, além do fluxo de pesquisa/PDF/logout existente. Script usa loopback IPv4 para evitar demora de resolução de localhost neste ambiente.
+- `git diff --check`: sem erros. Ajustes locais na branch `fix/pesquisa-paginacao-pdf`, posteriores ao commit `154f486`; nenhum merge.
+- Conferência visual pelo usuário permanece pendente; integração em banco isolado aprovada no marco anterior, não repetida para esta alteração de apresentação.
+
+## Limpeza do layout — 2026-10-08
+
+- Removido o link About do MainLayout: era um resíduo do template que apontava à documentação do ASP.NET, sem função no RegistroDoc.
+- Removida também a faixa superior vazia e os estilos correspondentes. Conteúdo mantém espaçamento superior; alteração vale para login e demais páginas do layout compartilhado.
+- `dotnet build RegistroDoc.slnx --no-restore`: aprovado, zero avisos/erros.
+- `dotnet test tests/RegistroDoc.UnitTests/RegistroDoc.UnitTests.csproj --no-build --no-restore`: 6 aprovados, zero falhas.
+- Atualizado somente o Web com `docker compose up -d --build --no-deps web`, preservando banco e volumes. GET `/login` aprovado: HTTP 200, formulário de login presente e link About ausente.
+- `python -u tests/validar_homologacao_http.py`: fluxo de login, pesquisa, paginação no topo/final, PDF e logout aprovado. `git diff --check`: sem erros. Alterações locais na branch de correção, sem merge. Conferência visual permanece a cargo da homologação.
+
+## Identidade visual — 2026-10-08
+
+- Solicitação do usuário: visual com mais cores e efeitos. Aplicada paleta azul profundo/violeta/ciano, fundos em gradiente, sombras, cartões arredondados, destaque de resultado ao passar o mouse e botões com gradiente.
+- Login redesenhado com apresentação do acervo, ilustração decorativa criada em CSS e painel de autenticação. Campos, nomes, endpoint e comportamento de login preservados.
+- Marca RD e navegação com destaque ativo; pesquisa com cabeçalho e formulário destacados. Paginação no topo/final e fluxos de PDF/logout preservados.
+- Layout responsivo, fontes locais, foco visível e estilos de movimento reduzido. HTML identificado como pt-BR. Nenhuma imagem, fonte ou biblioteca externa adicionada.
+- `dotnet build RegistroDoc.slnx --no-restore`: aprovado, zero avisos/erros. `dotnet test tests/RegistroDoc.UnitTests/RegistroDoc.UnitTests.csproj --no-build --no-restore`: 6 aprovados, zero falhas.
+- `docker compose up -d --build --no-deps web`: Web atualizado; banco e volumes preservados.
+- `python -u tests/validar_homologacao_http.py`: aprovado, incluindo login, filtros, paginação, PDFs corretos e bloqueio após logout. Integração de banco não repetida para mudanças visuais.
+- Login conferido visualmente no Edge headless em desktop (1440 px) e viewport móvel real de 390 px via protocolo de depuração. Medidas no móvel: viewport/documento 390 px, painel 342 px; sem excesso horizontal. Captura nativa inicial recortava a largura mínima da janela e foi substituída pela captura do viewport emulado.
+- Capturas e perfil de conferência somente em `artifacts/visual` (ignorado pelo Git). Conferência visual das interações da pesquisa e aprovação estética pelo usuário permanecem pendentes; capturas de login não substituem homologação completa.
+- `git diff --check`: sem erros. Alterações locais na branch de correção, sem merge na main.
+
 ## Próximas ações (prioridade)
 - [x] Verificar git status e branch atual.
 - [x] Ler AGENTS.md e todos os documentos de docs, README, compose e solução.
@@ -58,8 +92,61 @@ Branch: `fix/pesquisa-paginacao-pdf`, criada a partir de `docs/handoff-codex-202
 - [x] Implementar correções pequenas e testes de regressão.
 - [x] Executar build, testes unitários e integração em banco isolado.
 - [x] Atualizar Web/API sem destruir volumes; repetir roteiro por HTTP com massa fictícia.
-- [ ] Concluir conferência visual no navegador e verificação adicional de sessão expirada.
-- [ ] Registrar causas, arquivos, testes e evidências; solicitar aprovação para merge.
+- [x] Concluir conferência visual no navegador e verificação adicional de sessão expirada.
+- [x] Registrar causas, arquivos, testes e evidências; consolidar commits locais.
+- [ ] Obter autorização explícita e realizar merge na main.
+
+## Marco de continuidade — segurança e navegação — 2026-10-08
+
+- Mantida a branch `fix/pesquisa-paginacao-pdf` e preservadas as alterações visuais locais preexistentes; nenhum merge na main.
+- Corrigida pendência do README: login/logout desativavam antiforgery. Endpoints agora validam o token antes de autenticar/encerrar sessão, rejeitando token ausente/inválido com HTTP 400. Formulários incluem token; logout exige autenticação.
+- Ampliado `tests/validar_homologacao_http.py` e criado `tests/validar_homologacao_navegador.py`, usando Python padrão e Edge com perfil próprio. Perfis/capturas somente em `artifacts/visual`, ignorado pelo Git; nenhum segredo impresso.
+- `dotnet build RegistroDoc.slnx --no-restore`: aprovado, zero avisos/erros.
+- `dotnet test tests/RegistroDoc.UnitTests/RegistroDoc.UnitTests.csproj --no-build --no-restore`: 4 aprovados e 2 bloqueados pelo Controle de Aplicativo do Windows; repetição fora da sandbox encontrou o mesmo bloqueio.
+- `docker compose -f compose.validation.yaml up --abort-on-container-exit --exit-code-from tests`: aprovado, 6 unitários e 5 de integração, zero falhas; banco temporário separado do ambiente principal.
+- `docker compose up -d --build --no-deps web`: aprovado; somente Web atualizado, banco/volumes preservados.
+- `python -u tests/validar_homologacao_http.py`: aprovado; cobre tokens ausentes/inválidos, sessão preservada após logout rejeitado e fluxo existente de pesquisa/PDF/logout.
+- `python -u tests/validar_homologacao_navegador.py`: execução final aprovada; cliques de paginação, histórico, troca de pesquisa na página 2, abertura de PDF em outra aba e bloqueio após logout. Primeiras execuções expuseram dois problemas do roteiro, corrigidos: seletor abrangia o article do layout e o clique precisava simular gesto de usuário para permitir nova aba.
+- Pesquisa em desktop 1440 px/celular 390 px sem excesso horizontal; captura móvel inspecionada. Abertura da aba aprovada; renderização do PDF no visualizador ainda não homologada.
+- Evidências atualizadas em HOMOLOGACAO.md e comandos no README. Aprovação visual humana, sessão expirada, revisão de produção (HTTPS, arquivos, logs, backup/restauração e carga) e aprovação explícita para merge continuam pendentes. MVP validado tecnicamente nesta etapa; não declarar pronto para acervo real.
+
+## Marco de expiração e recuperação do ambiente — 2026-10-09
+
+- Continuidade autorizada pelo usuário; branch `fix/pesquisa-paginacao-pdf` preservada, sem merge na main. Alterações anteriores mantidas.
+- Extraída `SessionCookieConfiguration`, utilizada pelo Web e pelo teste. `SlidingExpiration=false` impede que a sessão Web ultrapasse a expiração original do token do IdentityHub.
+- Adicionado `SessionExpirationTests`, usando handler real de cookies e relógio controlado: sessão válida antes do vencimento, sem renovação após metade do prazo, rejeição e redirecionamento ao login após expiração.
+- Build final `dotnet build RegistroDoc.slnx --no-restore`: zero avisos e erros.
+- Suíte final `docker compose -f compose.validation.yaml up --abort-on-container-exit --exit-code-from tests`: 7 unitários e 5 de integração aprovados. Primeira execução encontrou erro na asserção do teste, corrigido; resultado final não tem falhas.
+- Imagem Web reconstruída; início na porta 8080 bloqueado por reserva de portas do Windows (faixa 8069–8168), comprovada por `netsh interface ipv4 show excludedportrange protocol=tcp`.
+- Compose permite `WEB_PORT` com padrão 8080, mantendo loopback. `.env` local recebeu somente configuração `WEB_PORT=18080`; nenhum segredo versionado. `docker compose up -d --no-deps web`: Web iniciado em http://localhost:18080. Banco e volumes preservados; sem alterações nas reservas do Windows.
+- Roteiros HTTP e Edge usam a porta configurada; ambos reexecutados e aprovados. README e HOMOLOGACAO atualizados.
+- Limites: expiração testada no handler com relógio controlado; expiração em navegador/IdentityHub real ainda não executada. Aprovação humana do visual, renderização do PDF e requisitos de produção continuam pendentes. Merge exige aprovação explícita.
+
+## Fechamento do MVP e pacote de operação — 2026-10-09
+
+- Usuário aprovou visual e leitura do PDF e autorizou concluir as pendências. Destino pretendido: servidor local do cartório; sistema operacional/endereço/certificado ainda não fornecidos. Pacote de implantação preparado sem instalação no servidor.
+- Revisadas as alterações locais de interface, paginação no topo/final, antiforgery, expiração e porta configurável, preservando o trabalho anterior na branch `fix/pesquisa-paginacao-pdf`. Sem merge ou envio ao GitHub.
+- `.dockerignore` passou a excluir `artifacts` (perfis/capturas do navegador), diretórios locais de credenciais e arquivos de chave; imagens Web/API reconstruídas sem esses artefatos. Imagens antigas locais não foram publicadas nem removidas nesta etapa.
+- `DocumentoFileResolver` rejeita links simbólicos de arquivo/pastas na raiz. Dois testes executados no Docker Linux; proteção depende também das permissões de escrita do acervo para evitar trocas concorrentes de arquivos.
+- Web suporta caminho persistente de chaves de Data Protection e identifica a aplicação de forma estável.
+- `compose.production.yaml`, `deploy/production.env.example` e OPERACAO.md preparados: HTTPS direto no Kestrel, host permitido, serviços internos sem publicação de portas, montagem somente leitura de acervo/certificado, chaves persistentes e limite de logs.
+- `dotnet build RegistroDoc.slnx --no-restore`: final aprovado, zero avisos/erros. `docker compose -f compose.validation.yaml up --abort-on-container-exit --exit-code-from tests`: final aprovado, 9 unitários e 5 de integração.
+- HTTP e Edge padrão reexecutados e aprovados na versão final. `validar_sessao_expirada.py`: expiração real no Edge/IdentityHub e `pg_dump`/`pg_restore` em banco temporário separado aprovados; ambiente separado parado ao terminar. Rota PDF usa ID fictício inexistente, conferindo a exigência de autorização antes/depois do vencimento.
+- `validar_carga_http.py`: 40 consultas, concorrência 4, zero falhas, 3,734 s; p50 232,61 ms/p95 1.585,64 ms/máximo 1.674,99 ms durante outras verificações. Resultado local, sem garantia de escala de produção. JSON somente em artifacts/validation, ignorado pelo Git e Docker.
+- `validar_configuracao_producao.py`: aprovado, verifica composição sem criar serviços nem usar segredos reais. HTTPS com certificado e hardware reais ainda depende da instalação.
+- Última execução de `validar_sessao_expirada.py` também aprovou persistência da sessão após reiniciar o Web, com chaves em diretório próprio de artifacts/validation. Expiração real e restauração fictícia repetidas e aprovadas após esse reinício; nenhum segredo versionado.
+- Dados e volumes do ambiente principal preservados; Web disponível em http://localhost:18080. Não houve migração destrutiva nem uso de acervo real.
+- Critérios funcionais do MVP concluídos. Requisitos restantes de servidor, certificado, auditoria dos acessos (serviço existente não chamado pelos endpoints), política de backup/logs, permissões e carga representativa documentados em OPERACAO.md; não declarar instalação de produção concluída. Merge na main exige autorização explícita.
+- Commit local das correções: `986ba1f` — interface, antiforgery, expiração, persistência de chaves, proteção de PDF e roteiros de regressão. A consolidação do pacote de operação/documentação foi interrompida e retomada no marco de 2026-10-13. Nenhum envio ao GitHub; main preservada.
+
+## Consolidação da entrega — 2026-10-13
+
+- Retomada solicitada para concluir o MVP antes dos próximos updates. Confirmados branch `fix/pesquisa-paginacao-pdf`, commit funcional `986ba1f` e pacote de operação/documentação ainda sem commit; sem novas alterações no código funcional.
+- Evidências de 2026-10-09 preservadas: build sem avisos/erros, 9 unitários e 5 de integração aprovados, HTTP/Edge, expiração real, sessão preservada após reinício, restauração fictícia e carga moderada. Esses testes não foram declarados reexecutados em 2026-10-13.
+- Em 2026-10-13, `python -u tests/validar_configuracao_producao.py` reexecutado e aprovado; `git diff --check` sem erros. A verificação do Compose não inicia containers nem instala o sistema no servidor.
+- Consolidar em commit local separado o Compose de produção/validação de sessão, configuração de porta, roteiros operacionais e documentação. Consultar `git log -2 --oneline` para os identificadores finais. Segredos, perfis, chaves, PDFs e dumps permanecem fora do versionamento.
+- MVP funcional entregue para uso com dados fictícios; próximos updates devem partir desta entrega e ter escopo próprio. Instalação em servidor/acervo real depende dos requisitos explícitos em OPERACAO.md, incluindo política de auditoria. Não foi realizada implantação nem declarada prontidão operacional de produção.
+- Merge na main e envio ao GitHub não executados; merge depende de autorização explícita conforme AGENTS.md.
 
 ## Comandos não destrutivos úteis
 - git status

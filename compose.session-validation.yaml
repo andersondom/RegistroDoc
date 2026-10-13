@@ -1,0 +1,54 @@
+name: registrodoc-session-validation
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: registrodoc_session_validation
+      POSTGRES_USER: validation
+      POSTGRES_PASSWORD: ${VALIDATION_PASSWORD:?Use o roteiro de validacao de sessao}
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U validation -d registrodoc_session_validation"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  api:
+    image: registrodoc-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__RegistroDoc: "Host=postgres;Database=registrodoc_session_validation;Username=validation;Password=${VALIDATION_PASSWORD}"
+      Jwt__SigningKey: ${VALIDATION_SIGNING_KEY:?Use o roteiro de validacao de sessao}
+
+  identityhub:
+    image: registrodoc-identityhub
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__IdentityHub: "Host=postgres;Database=registrodoc_session_validation;Username=validation;Password=${VALIDATION_PASSWORD}"
+      Jwt__SigningKey: ${VALIDATION_SIGNING_KEY}
+      Jwt__ExpirationMinutes: "1"
+      IDENTITY_ADMIN_EMAIL: "sessao-ficticia@example.invalid"
+      IDENTITY_ADMIN_PASSWORD: ${VALIDATION_PASSWORD}
+
+  web:
+    image: registrodoc-web
+    depends_on:
+      - api
+      - identityhub
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Api__BaseUrl: "http://api:8080/"
+      IdentityHub__BaseUrl: "http://identityhub:8080/"
+      DataProtection__KeysPath: /var/registrodoc/keys
+    volumes:
+      - "${VALIDATION_KEYS_PATH:?Use o roteiro de validacao de sessao}:/var/registrodoc/keys"
+    ports:
+      - "127.0.0.1:${SESSION_VALIDATION_PORT:-18081}:8080"

@@ -183,7 +183,7 @@ services:
       Api__BaseUrl: "http://api:8080/"
       IdentityHub__BaseUrl: "http://identityhub:8080/"
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${WEB_PORT:-8080}:8080"
 
   tests:
     image: mcr.microsoft.com/dotnet/sdk:10.0

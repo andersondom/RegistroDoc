@@ -1,0 +1,53 @@
+# Sobreposição para servidor com Docker Linux e certificado PFX fornecido pelo operador.
+# Executar apenas os serviços postgres/identityhub/api/web; não iniciar sampledata/indexadores fictícios.
+services:
+  postgres:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  identityhub:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    ports: !reset []
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    ports: !reset []
+    volumes: !override
+      - "${DOCUMENTS_PATH:?Defina DOCUMENTS_PATH}:/data/input:ro"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: "https://+:8443"
+      ASPNETCORE_Kestrel__Certificates__Default__Path: "/https/${TLS_CERTIFICATE_FILE:?Defina TLS_CERTIFICATE_FILE}"
+      ASPNETCORE_Kestrel__Certificates__Default__Password: ${TLS_CERTIFICATE_PASSWORD:?Defina TLS_CERTIFICATE_PASSWORD}
+      DataProtection__KeysPath: /var/registrodoc/keys
+      AllowedHosts: ${REGISTRODOC_HOST:?Defina REGISTRODOC_HOST}
+    ports: !override
+      - "${HTTPS_BIND_ADDRESS:-0.0.0.0}:${HTTPS_PORT:-443}:8443"
+    volumes:
+      - "${TLS_CERTIFICATE_DIRECTORY:?Defina TLS_CERTIFICATE_DIRECTORY}:/https:ro"
+      - registrodoc_webkeys:/var/registrodoc/keys
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  registrodoc_webkeys:
