@@ -179,6 +179,7 @@ Branch: `fix/pesquisa-paginacao-pdf`, criada a partir de `docs/handoff-codex-202
 - Imagem importer construída. `python -u tests/validar_importacao_cli.py`: aprovado com PDFs fictícios, destino privado vazio e conexão inacessível; comprova simulação sem banco/carga, ano/categoria, duplicação e bytes de origem preservados.
 - Versão final valida também ancestrais das raízes para impedir aliases por links/junções; teste executado em Linux. CLI trata modos conflitantes, arquivo de configuração ausente e execução sem conexão com código 1 e mensagem sem caminhos internos; esses casos foram executados no teste do container.
 - Documentação operacional e requisitos atualizados. Ferramenta disponível por terminal/Docker; painel de lotes não incluído. Carga de volume representativo, mapeamento da origem real e autorização de carga permanecem necessários; nenhum acervo real usado. Main não alterada; desenvolvimento em `feature/migracao-acervo-digitalizado`, sem merge/publicação.
+- Commit de implementação: `7af7182` — importação de PDFs pesquisáveis por categoria/ano, filtro Web e verificações. Árvore de trabalho limpa após consolidação; registro deste identificador em commit documental separado.
 
 ## Comandos não destrutivos úteis
 - git status
