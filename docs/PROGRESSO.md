@@ -94,7 +94,7 @@ Branch: `fix/pesquisa-paginacao-pdf`, criada a partir de `docs/handoff-codex-202
 - [x] Atualizar Web/API sem destruir volumes; repetir roteiro por HTTP com massa fictícia.
 - [x] Concluir conferência visual no navegador e verificação adicional de sessão expirada.
 - [x] Registrar causas, arquivos, testes e evidências; consolidar commits locais.
-- [ ] Obter autorização explícita e realizar merge na main.
+- [x] Obter autorização explícita e realizar merge na main.
 
 ## Marco de continuidade — segurança e navegação — 2026-10-08
 
@@ -147,6 +147,15 @@ Branch: `fix/pesquisa-paginacao-pdf`, criada a partir de `docs/handoff-codex-202
 - Consolidar em commit local separado o Compose de produção/validação de sessão, configuração de porta, roteiros operacionais e documentação. Consultar `git log -2 --oneline` para os identificadores finais. Segredos, perfis, chaves, PDFs e dumps permanecem fora do versionamento.
 - MVP funcional entregue para uso com dados fictícios; próximos updates devem partir desta entrega e ter escopo próprio. Instalação em servidor/acervo real depende dos requisitos explícitos em OPERACAO.md, incluindo política de auditoria. Não foi realizada implantação nem declarada prontidão operacional de produção.
 - Merge na main e envio ao GitHub não executados; merge depende de autorização explícita conforme AGENTS.md.
+
+## Merge autorizado e entrega consolidada — 2026-10-13
+
+- Usuário autorizou explicitamente o merge: “sim, autorizo”.
+- `git switch main` e `git merge --ff-only fix/pesquisa-paginacao-pdf`: executados com sucesso. Main avançou de `c90744d` para `7c14070`, sem conflitos nem alterações no código validado. Commits funcionais `154f486`/`986ba1f` e pacote final `7c14070` integrados.
+- Registro deste marco preparado na branch `docs/registro-merge-mvp-20261013` e integrado à main em avanço direto; sem correções de código adicionais. Verificar `git log -1` para o commit do registro.
+- Evidências de testes anteriores preservadas; nenhuma suíte foi declarada reexecutada por causa do merge, que não mudou o conteúdo funcional. A configuração de produção foi revalidada em 2026-10-13 conforme o marco anterior.
+- Nenhum push, implantação, alteração de dados persistidos ou remoção de volumes nesta etapa. Publicação no GitHub e instalação no servidor não foram executadas.
+- MVP funcional consolidado na main local. Próximos updates devem ser feitos em branches próprias, com escopo definido pelo usuário; requisitos de liberação de acervo real permanecem em OPERACAO.md.
 
 ## Comandos não destrutivos úteis
 - git status
