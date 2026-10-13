@@ -71,7 +71,7 @@ public sealed class PdfFileInspector : IPdfFileInspector
         return new PdfFileInfo(
             fileInfo.Name,
             fullPath,
-            relativePath,
+            relativePath.Replace('\\', '/'),
             fileInfo.Length,
             hash);
     }

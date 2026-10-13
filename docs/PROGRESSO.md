@@ -157,6 +157,29 @@ Branch: `fix/pesquisa-paginacao-pdf`, criada a partir de `docs/handoff-codex-202
 - Nenhum push, implantação, alteração de dados persistidos ou remoção de volumes nesta etapa. Publicação no GitHub e instalação no servidor não foram executadas.
 - MVP funcional consolidado na main local. Próximos updates devem ser feitos em branches próprias, com escopo definido pelo usuário; requisitos de liberação de acervo real permanecem em OPERACAO.md.
 
+## Nova etapa — importação do acervo digitalizado — 2026-10-13
+
+- Usuário solicitou ferramenta de migração/carga e leitura de arquivos já digitalizados, integrada ao RegistroDoc.
+- Criada branch `feature/migracao-acervo-digitalizado` a partir da main consolidada, com árvore inicialmente limpa. Não alterada a main.
+- Inspecionados Worker, opções do Indexer, inspector de PDF, extrator PdfPig, entidades, mapeamentos do banco e testes relacionados. Confirmado: cadastro/indexação de PDFs existente; OCR de imagens ou PDFs sem texto não implementado.
+- Reaproveitamento previsto: PDF por processo, entidades atuais, texto por página, pesquisa e rotas protegidas de leitura. Saída deve usar caminho relativo à raiz comum da API.
+- Solicitados formatos, organização por processo e presença de texto/OCR, com exemplos fictícios. Essas informações ainda não foram recebidas; agrupamento e tecnologia de conversão/OCR não definidos.
+- Investigação e proposta registradas em MIGRACAO.md; REQUISITOS atualizado para distinguir a nova solicitação do escopo original. Nenhuma importação, acesso ao acervo real, alteração de banco ou instalação de dependência executada. Build/testes não executados nesta etapa documental; nenhuma nova funcionalidade declarada pronta.
+
+## Importador de PDFs pesquisáveis implementado — 2026-10-13
+
+- Usuário confirmou PDFs pesquisáveis e informou categorias/subcategorias. OCR dispensado; adotado um PDF por documento. Ano deriva da subpasta de Averbações/Habilitações/Reconhecimento de Firmas; demais categorias sem ano informado.
+- Implementado `PdfBatchImporter` no Indexer existente e modos `--import-plan`/`--import-execute`; sem novo schema, pacote externo ou substituição do Worker. Carga reaproveita aquisição, estados e transação de páginas do indexador.
+- Mapeamento configurável de categorias, regras específicas por subpasta, relatórios privados NDJSON, validação de texto, cópia com hash e publicação sem sobrescrita, proteção contra links, preservação de originais, retomada/detecção de duplicação e conflitos de metadados. Caminhos gravados normalizados com `/`, relativos à raiz comum da API.
+- Modelos `deploy/importacao*.example.json` e `compose.import.yaml` preparados. Origem/configuração somente leitura; execução administrativa explícita. Relatórios/fixtures só em artifacts, ignorados pelo Git/Docker. O modelo aceita Livros/Lviros conforme nomes informados, a conferir na origem.
+- API disponibiliza lista autenticada de tipos indexados; Web recebe filtro Categoria, preserva categoria nos links e deixa de restringir automaticamente todas as consultas a habilitações. Sem filtro, consulta os tipos já existentes; labels legíveis para as categorias informadas.
+- Build final aprovado com zero avisos/erros. Suíte final em banco temporário `compose.validation.yaml`: 9 unitários e 10 de integração aprovados. Primeira tentativa de build identificou colisão do nome `Options` com namespace do projeto, corrigida; não confundir essa tentativa com o resultado final.
+- Integração testada com PDF textual fictício real: simulação sem cadastro, carga, indexação de texto, pesquisa por categoria/ano, leitura do PDF, repetição sem duplicar e conflito sem alterar metadados. Testes cobrem ano ausente, PDF sem texto, categoria não mapeada, duplicação no lote e link no destino sem criar pastas externas.
+- Web/API atualizados com `docker compose up -d --build --no-deps web api`; dados/volumes/indexadores preservados, sem executar importação no banco principal. HTTP e Edge aprovados, incluindo filtro de categoria.
+- Imagem importer construída. `python -u tests/validar_importacao_cli.py`: aprovado com PDFs fictícios, destino privado vazio e conexão inacessível; comprova simulação sem banco/carga, ano/categoria, duplicação e bytes de origem preservados.
+- Versão final valida também ancestrais das raízes para impedir aliases por links/junções; teste executado em Linux. CLI trata modos conflitantes, arquivo de configuração ausente e execução sem conexão com código 1 e mensagem sem caminhos internos; esses casos foram executados no teste do container.
+- Documentação operacional e requisitos atualizados. Ferramenta disponível por terminal/Docker; painel de lotes não incluído. Carga de volume representativo, mapeamento da origem real e autorização de carga permanecem necessários; nenhum acervo real usado. Main não alterada; desenvolvimento em `feature/migracao-acervo-digitalizado`, sem merge/publicação.
+
 ## Comandos não destrutivos úteis
 - git status
 - dotnet build RegistroDoc.slnx

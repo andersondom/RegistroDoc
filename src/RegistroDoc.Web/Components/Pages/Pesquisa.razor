@@ -15,7 +15,7 @@
 <span class="eyebrow">EXPLORE SEU ACERVO</span>
 <h1>Pesquisa de documentos</h1>
 <p class="text-muted mb-0">
-    Localize habilitações de casamento pelo conteúdo indexado do PDF.
+    Localize documentos pelo conteúdo pesquisável dos PDFs.
 </p>
 </header>
 
@@ -23,7 +23,7 @@
     <div class="card-body">
         <form method="get" action="/pesquisa" data-enhance="false">
             <div class="row g-3">
-                <div class="col-md-6">
+                <div class="col-md-5">
                     <label class="form-label" for="termo">Texto</label>
                     <input id="termo" name="Termo"
                                class="form-control"
@@ -31,14 +31,25 @@
                                placeholder="Nome, termo ou conteúdo do documento" />
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label" for="ano">Ano</label>
                     <input id="ano" name="AnoReferencia" type="number"
                                  class="form-control"
                                  value="@AnoReferencia" />
                 </div>
 
-                <div class="col-md-3 d-flex align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label" for="categoria">Categoria</label>
+                    <select id="categoria" name="TipoDocumento" class="form-control">
+                        <option value="" selected="@(string.IsNullOrWhiteSpace(TipoDocumento))">Todas as categorias</option>
+                        @foreach (var tipo in _tipos)
+                        {
+                            <option value="@tipo" selected="@(tipo == TipoDocumento)">@NomeCategoria(tipo)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-2 d-flex align-items-end">
                     <button class="btn btn-primary w-100"
                             type="submit"
                             disabled="@_carregando">
@@ -81,7 +92,7 @@
                 <div class="card-body">
                     <h2 class="h5">@item.NomeArquivo</h2>
                     <div class="text-muted mb-2">
-                        @item.TipoDocumento
+                        @NomeCategoria(item.TipoDocumento)
                         @if (item.AnoReferencia.HasValue)
                         {
                             <span> · @item.AnoReferencia</span>
@@ -120,6 +131,24 @@
 }
 
 @code {
+    private static string NomeCategoria(string tipo) => tipo switch
+    {
+        "HabilitacaoCasamento" => "Habilitações",
+        "Averbacao" => "Averbações",
+        "Adocao" => "Nascimento e Óbito · Adoção",
+        "AverbacaoNascimentoObito" => "Nascimento e Óbito · Averbações",
+        "DeclaracaoNascimento" => "Declaração de Nascimento",
+        "DeclaracaoObito" => "Declaração de Óbito",
+        "LivroNascimentoObito" => "Livros de Nascimento e Óbito",
+        "ProtocoloNascimentoObito" => "Protocolos de Nascimento e Óbito",
+        "ReconhecimentoPaternidade" => "Reconhecimento de Paternidade",
+        "SuprimentoAssentoNascimento" => "Suprimento de Assento Nascimento",
+        "SuprimentoObito" => "Suprimento de Óbito",
+        "ReconhecimentoFirma" => "Reconhecimento de Firmas",
+        "ReconhecimentoMudancaGenero" => "Reconhecimento de Mudança de Gênero",
+        "RequerimentoMudancaNome" => "Requerimento de Mudança de Nome",
+        _ => tipo
+    };
     private RenderFragment ControlesPaginacao => @<nav class="d-flex gap-2 mb-3"
         aria-label="Paginação dos resultados">
         <a class="btn btn-outline-secondary @(_resultado!.Pagina <= 1 ? "disabled" : "")"
@@ -138,6 +167,9 @@
     public string? Termo { get; set; }
     [SupplyParameterFromQuery]
     public int? AnoReferencia { get; set; }
+    [SupplyParameterFromQuery]
+    public string? TipoDocumento { get; set; }
+    private IReadOnlyList<string> _tipos = Array.Empty<string>();
     private DocumentoSearchResponse? _resultado;
     private bool _carregando;
     private string? _erro;
@@ -163,6 +195,9 @@
         if (AnoReferencia.HasValue)
             parametros.Add($"AnoReferencia={AnoReferencia.Value}");
 
+        if (!string.IsNullOrWhiteSpace(TipoDocumento))
+            parametros.Add($"TipoDocumento={Uri.EscapeDataString(TipoDocumento.Trim())}");
+
         var query = parametros.Count > 0 ? "?" + string.Join("&", parametros) : string.Empty;
         return $"/pesquisa/{Math.Max(1, pagina)}{query}";
     }
@@ -171,14 +206,14 @@
     {
         _carregando = true;
         _erro = null;
+        _resultado = null;
 
         try
         {
             var parametros = new List<string>
             {
                 $"Pagina={_pagina}",
-                "TamanhoPagina=20",
-                "TipoDocumento=HabilitacaoCasamento"
+                "TamanhoPagina=20"
             };
 
             if (!string.IsNullOrWhiteSpace(Termo))
@@ -193,6 +228,9 @@
             }
 
             var client = HttpClientFactory.CreateClient("RegistroDoc.Api");
+            _tipos = await client.GetFromJsonAsync<List<string>>("api/documentos/tipos") ?? new();
+            if (!string.IsNullOrWhiteSpace(TipoDocumento))
+                parametros.Add($"TipoDocumento={Uri.EscapeDataString(TipoDocumento.Trim())}");
             _resultado = await client.GetFromJsonAsync<DocumentoSearchResponse>(
                 "api/documentos/pesquisa?" + string.Join("&", parametros));
 

@@ -188,6 +188,15 @@ public sealed class DocumentosController : ControllerBase
             totalPaginas));
     }
 
+    [HttpGet("tipos")]
+    public async Task<ActionResult<IReadOnlyList<string>>> ListarTipos(CancellationToken cancellationToken)
+    {
+        var types = await _db.Documentos.AsNoTracking()
+            .Where(d => d.StatusIndexacao == "Concluido")
+            .Select(d => d.TipoDocumento).Distinct().OrderBy(t => t).ToListAsync(cancellationToken);
+        return Ok(types);
+    }
+
     private static string? CriarTrecho(string? texto, string? termo)
     {
         if (string.IsNullOrWhiteSpace(texto) ||

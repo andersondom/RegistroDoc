@@ -35,6 +35,14 @@ public sealed class PesquisaRegressionTests
         Assert.DoesNotContain("Termo=", factory.LastUrl);
         Assert.DoesNotContain("AnoReferencia=", factory.LastUrl);
         Assert.Equal("/pesquisa/1", PageUrl(page, 0));
+
+        page.TipoDocumento = "Categoria Ficticia";
+        await page.LoadAsync();
+        Assert.Contains("TipoDocumento=Categoria%20Ficticia", factory.LastUrl);
+        Assert.Equal("/pesquisa/2?TipoDocumento=Categoria%20Ficticia", PageUrl(page, 2));
+        page.TipoDocumento = "";
+        await page.LoadAsync();
+        Assert.DoesNotContain("TipoDocumento=", factory.LastUrl);
     }
 
     private static string PageUrl(Pesquisa page, int number) =>
@@ -56,7 +64,7 @@ public sealed class PesquisaRegressionTests
             LastUrl = request.RequestUri!.OriginalString;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent("{\"itens\":[],\"pagina\":1,\"tamanhoPagina\":20,\"totalItens\":0,\"totalPaginas\":0}",
+                Content = new StringContent(request.RequestUri.AbsolutePath.EndsWith("/tipos") ? "[]" : "{\"itens\":[],\"pagina\":1,\"tamanhoPagina\":20,\"totalItens\":0,\"totalPaginas\":0}",
                     System.Text.Encoding.UTF8, "application/json")
             });
         }

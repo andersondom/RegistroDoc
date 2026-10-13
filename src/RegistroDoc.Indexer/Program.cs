@@ -3,8 +3,29 @@ using RegistroDoc.Indexer;
 using RegistroDoc.Indexer.Options;
 using RegistroDoc.Indexer.Services;
 using RegistroDoc.Infrastructure.Persistence;
+using RegistroDoc.Indexer.Importing;
+using System.Text.Json;
 
-var builder = Host.CreateApplicationBuilder(args);
+var plan = args.Contains("--import-plan");
+var execute = args.Contains("--import-execute");
+if (plan && execute)
+{
+    Console.Error.WriteLine("Escolha simulação ou execução.");
+    Environment.ExitCode = 1;
+    return;
+}
+var importMode = plan || execute;
+var builder = Host.CreateApplicationBuilder(args.Where(a => a is not "--import-plan" and not "--import-execute").ToArray());
+if (importMode && builder.Configuration["Importacao:ConfigPath"] is { Length: > 0 } configPath)
+{
+    try { builder.Configuration.AddJsonFile(Path.GetFullPath(configPath), optional: false).AddEnvironmentVariables(); }
+    catch (Exception)
+    {
+        Console.Error.WriteLine("Não foi possível ler a configuração local de importação.");
+        Environment.ExitCode = 1;
+        return;
+    }
+}
 
 builder.Services
     .AddOptions<IndexerOptions>()
@@ -42,13 +63,19 @@ builder.Services
 var connectionString =
     builder.Configuration.GetConnectionString("RegistroDoc");
 
-if (string.IsNullOrWhiteSpace(connectionString))
+if ((!importMode || execute) && string.IsNullOrWhiteSpace(connectionString))
 {
+    if (importMode)
+    {
+        Console.Error.WriteLine("Configure a conexão com o banco autorizado antes de executar a carga.");
+        Environment.ExitCode = 1;
+        return;
+    }
     throw new InvalidOperationException(
         "ConnectionStrings:RegistroDoc não configurada.");
 }
 
-builder.Services.AddDbContext<RegistroDocDbContext>(
+if (!string.IsNullOrWhiteSpace(connectionString)) builder.Services.AddDbContext<RegistroDocDbContext>(
     options =>
         options.UseNpgsql(connectionString));
 
@@ -60,9 +87,24 @@ builder.Services.AddSingleton<
     IPdfTextExtractor,
     PdfPigTextExtractor>();
 
-builder.Services.AddHostedService<Worker>();
+if (!importMode) builder.Services.AddHostedService<Worker>();
+else builder.Services.AddSingleton<PdfBatchImporter>();
 
-var host = builder.Build();
+using var host = builder.Build();
 
-host.Run();
+if (importMode)
+{
+    using var cancellation = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; cancellation.Cancel(); };
+    try
+    {
+        var options = builder.Configuration.GetSection("Importacao").Get<ImportOptions>() ?? new();
+        var summary = await host.Services.GetRequiredService<PdfBatchImporter>().RunAsync(options, execute, cancellation.Token);
+        Console.WriteLine(JsonSerializer.Serialize(summary));
+        Environment.ExitCode = summary.Falhas == 0 ? 0 : 1;
+    }
+    catch (OperationCanceledException) { Console.Error.WriteLine("Importação cancelada; relatório parcial preservado."); Environment.ExitCode = 130; }
+    catch (Exception) { Console.Error.WriteLine("Não foi possível iniciar ou concluir a importação. Confira a configuração e o relatório privado."); Environment.ExitCode = 1; }
+}
+else await host.RunAsync();
 

@@ -1,0 +1,21 @@
+{
+  "Importacao": {
+    "SourcePath": "/source",
+    "TargetRootPath": "/data/input",
+    "CodigoCnsServentia": "TESTE0001",
+    "ReportDirectory": "/reports",
+    "Categorias": {
+      "Habilitacoes/2025": {
+        "TipoDocumento": "HabilitacaoCasamento",
+        "AnoReferencia": 2025
+      },
+      "Habilitacoes/2026": {
+        "TipoDocumento": "HabilitacaoCasamento",
+        "AnoReferencia": 2026
+      },
+      "CategoriaFicticia": {
+        "TipoDocumento": "CategoriaFicticia"
+      }
+    }
+  }
+}

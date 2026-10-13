@@ -55,12 +55,14 @@ def request(client, path, data=None, headers=None):
         return response.status, response.geturl(), response.headers, response.read()
 
 
-def search(client, page, term=None, year=None):
+def search(client, page, term=None, year=None, document_type=None):
     params = {}
     if term is not None:
         params["Termo"] = term
     if year is not None:
         params["AnoReferencia"] = year
+    if document_type is not None:
+        params["TipoDocumento"] = document_type
     path = "/pesquisa" if page == 1 else f"/pesquisa/{page}"
     if params:
         path += "?" + urllib.parse.urlencode(params)
@@ -138,6 +140,9 @@ def main():
     assert pdf_links(changed) and not set(pdf_links(changed)) & set(pdf_links(first)), "Nova pesquisa manteve resultados antigos"
     assert 'action="/pesquisa"' in second and 'method="get"' in second, "Formulário não reinicia rota"
     assert not pdf_links(search(client, 1, "GIRASSOL DOURADO", 2026)), "Filtro de ano ignorado"
+    assert pdf_links(search(client, 1, "GIRASSOL DOURADO", 2025, "HabilitacaoCasamento")) == pdf_links(changed), "Filtro de categoria alterou os documentos esperados"
+    assert not pdf_links(search(client, 1, "GIRASSOL DOURADO", 2025, "CATEGORIA_FICTICIA_INEXISTENTE")), "Filtro de categoria ignorado"
+    assert 'name="TipoDocumento"' in changed, "Filtro de categoria ausente na interface"
     cleared = search(client, 1)
     assert pdf_links(cleared) and "Termo=" not in cleared and "AnoReferencia=" not in cleared, "Limpeza manteve filtros"
     assert pdf_links(search(client, 1, "", "")) == pdf_links(cleared), "Submit de campos vazios não limpou filtros"

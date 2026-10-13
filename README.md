@@ -67,6 +67,20 @@ O primeiro cria Web/API/IdentityHub e PostgreSQL temporário separados, com usu�
 
 O pacote `compose.production.yaml` prepara HTTPS direto no Web, host permitido, API/IdentityHub sem portas publicadas, chaves de sessão persistentes, acervo somente para leitura e limites de logs. Use `deploy/production.env.example` como modelo local e siga [docs/OPERACAO.md](docs/OPERACAO.md). A instalação depende do servidor, certificado e preparação autorizada do banco; ainda não foi realizada. Não iniciar os serviços de massa fictícia no servidor de produção.
 
+## Importação de PDFs pesquisáveis
+
+Ferramenta de lote integrada ao Indexer para copiar PDFs já pesquisáveis, extrair texto por página e cadastrá-los no acervo. Preserva originais, identifica duplicações por SHA-256, registra falhas e permite repetir a execução sem duplicar documentos. A pesquisa Web oferece filtro de categoria, incluindo os novos tipos importados.
+
+Prepare a configuração local a partir de `deploy/importacao-categorias.example.json` e siga [docs/MIGRACAO.md](docs/MIGRACAO.md). Execute primeiro `--import-plan` para revisar o relatório; `--import-execute` é uma carga explícita e só deve ser executado contra o banco/acervo autorizado. PDFs sem texto são reportados; OCR não faz parte desta ferramenta. Origem é montada somente para leitura; relatórios ficam em diretório privado, fora do Git/Docker.
+
+Validação da ferramenta, com PDFs exclusivamente fictícios e sem carga:
+
+```powershell
+python -u tests/validar_importacao_cli.py
+```
+
+O script requer a imagem `registrodoc-importer` já construída. A integração de carga/pesquisa/PDF é verificada pela suíte em banco isolado, agora com 9 testes unitários e 10 de integração.
+
 ## Índice de pesquisa
 
 A migração `20261007180000_AddTrigramSearchIndex` instala a extensão PostgreSQL `pg_trgm` e o índice GIN sobre `PaginasDocumento.TextoExtraido`. Consultas seletivas com `ILIKE '%termo%'` podem utilizar o índice; a escolha do plano é do PostgreSQL. Em benchmark local com 2.023 PDFs fictícios, uma consulta seletiva levou 11,074 ms com varredura sequencial e 0,523 ms com uso forçado do índice. **O segundo tempo não representa uma melhoria automática em condições normais**, pois foi medido com `enable_seqscan = off`.

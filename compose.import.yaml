@@ -1,0 +1,21 @@
+# Usar com compose.yaml; somente iniciar este serviço por comando explícito.
+services:
+  importer:
+    profiles: ["importacao"]
+    build:
+      context: .
+      dockerfile: src/RegistroDoc.Indexer/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      Importacao__ConfigPath: /config/importacao.json
+      ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
+      Logging__LogLevel__Default: Warning
+    volumes:
+      - "${IMPORT_SOURCE_PATH:?Defina IMPORT_SOURCE_PATH}:/source:ro"
+      - "${IMPORT_CONFIG_PATH:?Defina IMPORT_CONFIG_PATH}:/config/importacao.json:ro"
+      - "${IMPORT_REPORT_PATH:?Defina IMPORT_REPORT_PATH}:/reports"
+      - "${IMPORT_TARGET_PATH:-./data/input}:/data/input"
+    command: ["--import-plan"]

@@ -36,5 +36,7 @@ README/compose descrevem 23 PDFs fictícios funcionais e 2.000 fictícios de ben
 ## Fora de escopo nesta correção
 OCR, integração SCC/CRC/SIRC e expansão para outros tipos documentais. Esses são trabalhos distintos; não misturar requisitos sem autorização.
 
+Em 2026-10-13, o usuário solicitou uma nova etapa de importação de arquivos já digitalizados e leitura de conteúdo integrada ao sistema. A exclusão acima se refere à correção original do MVP. Na nova etapa, confirmou PDFs pesquisáveis por categoria: importação em lote sem OCR, um PDF por documento, categorias/subcategorias mapeadas e ano por subpasta onde informado. Implementação, comandos e limites em MIGRACAO.md. OCR continua fora desta entrega.
+
 ## Pendências de definição
 Validar comportamento exato da navegação de PDFs (nova aba/inline/download), política de paginação/URL e cobertura de autorização de cada endpoint conforme implementação atual.

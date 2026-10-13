@@ -1,0 +1,25 @@
+{
+  "Importacao": {
+    "SourcePath": "/source",
+    "TargetRootPath": "/data/input",
+    "CodigoCnsServentia": "CONFIGURE_CNS",
+    "ReportDirectory": "/reports",
+    "Categorias": {
+      "Averbações": { "TipoDocumento": "Averbacao", "AnoPorSubpasta": true },
+      "Habilitações": { "TipoDocumento": "HabilitacaoCasamento", "AnoPorSubpasta": true },
+      "Nascimento e Óbito/Adoção": { "TipoDocumento": "Adocao" },
+      "Nascimento e Óbito/Averbações": { "TipoDocumento": "AverbacaoNascimentoObito" },
+      "Nascimento e Óbito/Declaração de Nascimento": { "TipoDocumento": "DeclaracaoNascimento" },
+      "Nascimento e Óbito/Declaração de Óbito": { "TipoDocumento": "DeclaracaoObito" },
+      "Nascimento e Óbito/Livros": { "TipoDocumento": "LivroNascimentoObito" },
+      "Nascimento e Óbito/Lviros": { "TipoDocumento": "LivroNascimentoObito" },
+      "Nascimento e Óbito/Protocolos de Nascimento e Óbito": { "TipoDocumento": "ProtocoloNascimentoObito" },
+      "Nascimento e Óbito/Reconhecimento de Paternidade": { "TipoDocumento": "ReconhecimentoPaternidade" },
+      "Nascimento e Óbito/Suprimento de Assento Nascimento": { "TipoDocumento": "SuprimentoAssentoNascimento" },
+      "Nascimento e Óbito/Suprimento de Óbito": { "TipoDocumento": "SuprimentoObito" },
+      "Reconhecimento de Firmas": { "TipoDocumento": "ReconhecimentoFirma", "AnoPorSubpasta": true },
+      "Reconhecimento de Mudança de Gênero": { "TipoDocumento": "ReconhecimentoMudancaGenero" },
+      "Requerimento de Mudança de Nome": { "TipoDocumento": "RequerimentoMudancaNome" }
+    }
+  }
+}

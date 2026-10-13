@@ -171,6 +171,10 @@ def main(session_expiry=False, restart_command=None):
         dev.wait("location.pathname === '/pesquisa/2' && document.body.innerText.includes('Página 2 de')")
         search("GIRASSOL DOURADO", "2025")
         assert not set(first) & set(ids()), "Nova pesquisa conservou documentos anteriores"
+        changed = ids()
+        dev.evaluate("document.querySelector('#categoria').value='HabilitacaoCasamento';document.querySelector('form[action=\"/pesquisa\"]').requestSubmit()")
+        dev.wait("new URLSearchParams(location.search).get('TipoDocumento') === 'HabilitacaoCasamento' && document.querySelector('#categoria')?.value === 'HabilitacaoCasamento' && !!document.querySelector('article.card')")
+        assert ids() == changed, "Filtro de categoria alterou os resultados esperados"
         print("OK: cliques próxima/anterior, histórico e nova pesquisa após paginação")
 
         for width, mobile in ((1440, False), (390, True)):

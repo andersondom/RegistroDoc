@@ -62,6 +62,9 @@ public sealed class Worker : BackgroundService
         }
     }
 
+    public Task ImportFileAsync(string file, string inputRoot, CancellationToken cancellationToken = default)
+        => ProcessarArquivoAsync(file, inputRoot, cancellationToken);
+
     private async Task ProcessarPastaAsync(
         string inputPath,
         CancellationToken cancellationToken)
