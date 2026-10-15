@@ -242,6 +242,15 @@ Branch: `fix/pesquisa-paginacao-pdf`, criada a partir de `docs/handoff-codex-202
 - **Retomada:** ler este último marco; verificar branch/árvore local; consultar o resultado privado da validação. Quando o usuário confirmar os cinco PDFs corrigidos na raiz da origem, conferir texto e correspondência, preservar backup dos originais, substituir nos destinos de `artifacts/piloto-local/pendencias.json` e preparar lote separado com o CNS da configuração atual de `artifacts/piloto-prontos/config.json`. A configuração antiga de `piloto-local` ainda contém o CNS fictício e não deve ser usada para carga real. Gerar/revisar nova simulação antes da carga complementar.
 - Trabalho permanece na branch `feature/migracao-acervo-digitalizado`, com alterações locais sem commit, sem merge/push. Histórico de build e testes técnicos anteriores preservado; build/suítes .NET não repetidos nesta retomada operacional. Produção continua dependente dos controles de OPERACAO.md. Estado registrado a pedido do usuário; nenhum segredo ou documento privado incluído no versionamento.
 
+## Commit, merge autorizado e próximas intervenções — 2026-10-15
+
+- Usuário solicitou commit e merge do que está pronto, deixando os cinco PDFs em OCR para depois. Criado `3319f9f` — `Consolida importacao por plano revisado e validacao do piloto`, com código, testes, documentação e análise das próximas etapas. Dados do piloto, configurações locais, backups, credenciais e relatórios permaneceram ignorados.
+- `git switch main` e `git merge --ff-only feature/migracao-acervo-digitalizado`: aprovados, avanço direto de `e6d89ef` para `3319f9f`, sem conflitos. Incluídos os commits anteriores do importador `7af7182` e `d291783`. Nenhum push ao GitHub, alteração de banco ou nova importação nesta consolidação.
+- Registro posterior do merge preparado em `docs/registro-merge-importacao-20261015` para integração por avanço direto. Consultar `git log -2 --oneline` e `git status --short` para o estado final. Não executar novamente o lote por causa do merge.
+- `git diff --check` e revisão dos arquivos preparados sem dados privados. Evidências existentes preservadas: build sem avisos/erros, 9 unitários + 21 integração + 9 lançador em Linux em 2026-10-14; conferência operacional dos 411 documentos e 23.032 páginas em 2026-10-15. Nenhuma suíte declarada reexecutada apenas para o commit/merge; não houve alteração funcional adicional nesta consolidação.
+- Análise em [PROXIMAS-ETAPAS](PROXIMAS-ETAPAS.md): priorizar auditoria dos endpoints, depois perfis/contas, recuperação operacional, progresso de lotes e implantação/desempenho. Confirmado no código: serviço de auditoria registrado mas ainda não chamado pela pesquisa/PDF. Não foi iniciada implementação dessas intervenções.
+- Próximo incremento deve usar branch própria e escopo definido. Cinco PDFs em OCR continuam aguardando devolução; integração complementar segue o procedimento dos marcos anteriores. Piloto local concluído não equivale à liberação de produção.
+
 ## Comandos não destrutivos úteis
 - git status
 - dotnet build RegistroDoc.slnx
