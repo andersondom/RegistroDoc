@@ -22,6 +22,17 @@ public sealed class PdfBatchImporter(
         var reportDirectory = Path.GetFullPath(options.ReportDirectory);
         if (!Directory.Exists(source)) throw new ArgumentException("Pasta de origem não encontrada.");
         RejectLinks(source, source);
+        var categories = options.Categorias.Select(pair => (
+            Prefix: NormalizeFolder(pair.Key), Category: pair.Value)).OrderByDescending(c => c.Prefix.Length).ToArray();
+        var enumeration = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = false,
+            AttributesToSkip = FileAttributes.ReparsePoint };
+        var files = Directory.EnumerateFiles(source, "*", enumeration)
+            .Where(f => Path.GetExtension(f).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => Path.GetRelativePath(source, f).Replace('\\', '/'), StringComparer.Ordinal).ToArray();
+        IReadOnlyDictionary<string, ImportItem>? approved = null;
+        if (execute)
+            approved = await ImportPlanReview.ValidateAsync(options, files,
+                relative => ResolveCategory(relative, categories), inspector, cancellationToken);
         if (execute)
         {
             await using var scope = scopeFactory.CreateAsyncScope();
@@ -34,42 +45,27 @@ public sealed class PdfBatchImporter(
         Directory.CreateDirectory(reportDirectory);
         var report = Path.Combine(reportDirectory, $"importacao-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.ndjson");
         await using var writer = new StreamWriter(new FileStream(report, FileMode.CreateNew, FileAccess.Write));
-        var categories = options.Categorias.Select(pair => (
-            Prefix: NormalizeFolder(pair.Key), Category: pair.Value)).OrderByDescending(c => c.Prefix.Length).ToArray();
+        await writer.WriteLineAsync(JsonSerializer.Serialize(ImportPlanReview.Header(options, execute)));
+        await writer.FlushAsync(cancellationToken);
         var hashes = new Dictionary<string, (string Type, int? Year)>(StringComparer.Ordinal);
         int total = 0, ready = 0, imported = 0, duplicates = 0, failures = 0;
-        var enumeration = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = false,
-            AttributesToSkip = FileAttributes.ReparsePoint };
-
-        foreach (var file in Directory.EnumerateFiles(source, "*", enumeration)
-            .OrderBy(f => Path.GetRelativePath(source, f).Replace('\\', '/'), StringComparer.Ordinal))
+        foreach (var file in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!Path.GetExtension(file).Equals(".pdf", StringComparison.OrdinalIgnoreCase)) continue;
             total++;
             var relative = Path.GetRelativePath(source, file).Replace('\\', '/');
-            var mapping = categories.FirstOrDefault(c => relative.StartsWith(c.Prefix + "/",
-                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
-            var category = mapping.Category;
+            ImportCategory? category = null;
             ImportItem item;
             try
             {
-                if (category is null)
-                    throw new ArgumentException("Categoria não mapeada.");
-                if (category.AnoPorSubpasta)
-                {
-                    var remainder = relative[(mapping.Prefix.Length + 1)..].Split('/');
-                    if (remainder.Length < 2 || remainder[0].Length != 4 ||
-                        !int.TryParse(remainder[0], System.Globalization.NumberStyles.None,
-                            System.Globalization.CultureInfo.InvariantCulture, out var year) || year is < 1 or > 9999)
-                        throw new MissingYearException();
-                    category = new ImportCategory { TipoDocumento = category.TipoDocumento, AnoReferencia = year };
-                }
+                category = ResolveCategory(relative, categories);
                 RejectLinks(source, file);
                 var info = await inspector.InspectAsync(file, source, cancellationToken);
                 var pages = await extractor.ExtractAsync(file, cancellationToken);
                 if (pages.Count == 0 || !pages.Any(p => !string.IsNullOrWhiteSpace(p.Texto)))
                     throw new InvalidDataException("PDF sem texto pesquisável.");
+                if (approved is not null && (approved[relative].HashSha256 != info.HashSha256 ||
+                    approved[relative].Paginas != pages.Count)) throw new ImportPlanException();
                 var state = "Pronto";
                 if (hashes.TryGetValue(info.HashSha256, out var previous))
                     state = previous == (category.TipoDocumento, category.AnoReferencia) ? "DuplicadoNoLote" : "ConflitoMetadados";
@@ -83,8 +79,9 @@ public sealed class PdfBatchImporter(
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception exception)
             {
-                var state = category is null ? "CategoriaNaoMapeada"
-                    : exception is MissingYearException ? "AnoNaoIdentificado"
+                var state = exception is MissingYearException ? "AnoNaoIdentificado"
+                    : exception is ImportPlanException ? "PlanoDivergente"
+                    : category is null ? "CategoriaNaoMapeada"
                     : exception is InvalidDataException ? "SemTextoPesquisavel" : "FalhaLeituraOuCarga";
                 item = new(relative, category?.TipoDocumento, category?.AnoReferencia, null, 0, state);
             }
@@ -105,6 +102,21 @@ public sealed class PdfBatchImporter(
     }
 
     private sealed class MissingYearException : Exception { }
+
+    private static ImportCategory ResolveCategory(string relative,
+        (string Prefix, ImportCategory Category)[] categories)
+    {
+        var mapping = categories.FirstOrDefault(c => relative.StartsWith(c.Prefix + "/",
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
+        var category = mapping.Category ?? throw new ArgumentException("Categoria não mapeada.");
+        if (!category.AnoPorSubpasta) return category;
+        var remainder = relative[(mapping.Prefix.Length + 1)..].Split('/');
+        if (remainder.Length < 2 || remainder[0].Length != 4 ||
+            !int.TryParse(remainder[0], System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var year) || year is < 1 or > 9999)
+            throw new MissingYearException();
+        return new ImportCategory { TipoDocumento = category.TipoDocumento, AnoReferencia = year };
+    }
 
     private async Task<string> ImportAsync(ImportOptions options, ImportCategory category,
         PdfFileInfo pdf, IReadOnlyList<PdfExtractedPage> pages, string target, CancellationToken cancellationToken)

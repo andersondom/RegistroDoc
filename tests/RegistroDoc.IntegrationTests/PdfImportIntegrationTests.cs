@@ -42,6 +42,7 @@ public sealed class PdfImportIntegrationTests
             await File.WriteAllBytesAsync(original, bytes);
             var plan = await importer.RunAsync(options, execute: false);
             Assert.Equal(new ImportSummary(1, 1, 0, 0, 0), plan);
+            options.ApprovedPlanPath = Directory.GetFiles(options.ReportDirectory, "*.ndjson").Single();
             Assert.False(Directory.Exists(target));
             await using var scope = provider.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<RegistroDocDbContext>();
@@ -69,6 +70,9 @@ public sealed class PdfImportIntegrationTests
 
             options.Categorias["Categoria"].AnoPorSubpasta = false;
             options.Categorias["Categoria"].AnoReferencia = 2026;
+            await importer.RunAsync(options, execute: false);
+            options.ApprovedPlanPath = Directory.GetFiles(options.ReportDirectory, "*.ndjson")
+                .OrderByDescending(File.GetLastWriteTimeUtc).First();
             var conflict = await importer.RunAsync(options, execute: true);
             Assert.Equal(1, conflict.Falhas);
             Assert.Equal(2025, (await db.Documentos.AsNoTracking().SingleAsync(d => d.Id == document.Id)).AnoReferencia);
@@ -207,8 +211,64 @@ public sealed class PdfImportIntegrationTests
             Directory.CreateDirectory(outside);
             Directory.CreateSymbolicLink(Path.Combine(target, "importacao"), outside);
             await File.WriteAllBytesAsync(Path.Combine(source, "Categoria", "A.pdf"), CreatePdf(Guid.NewGuid().ToString("N")));
+            await importer.RunAsync(options, execute: false);
+            options.ApprovedPlanPath = Directory.GetFiles(options.ReportDirectory, "*.ndjson").Single();
             Assert.Equal(1, (await importer.RunAsync(options, execute: true)).Falhas);
             Assert.Empty(Directory.EnumerateFileSystemEntries(outside));
+        }
+        finally { if (Directory.Exists(temporary)) Directory.Delete(temporary, true); }
+    }
+
+    [Theory]
+    [InlineData("ausente")]
+    [InlineData("alterado")]
+    [InlineData("adicionado")]
+    [InlineData("removido")]
+    [InlineData("categoria")]
+    [InlineData("serventia")]
+    [InlineData("banco")]
+    [InlineData("ambiente")]
+    [InlineData("destino")]
+    [InlineData("incompleto")]
+    [InlineData("com-falhas")]
+    public async Task Carga_DeveExigirPlanoIntegroAntesDeAcessarBancoOuCriarDestino(string change)
+    {
+        var temporary = Path.Combine(Path.GetTempPath(), "registrodoc-reviewed-" + Guid.NewGuid());
+        var source = Path.Combine(temporary, "source");
+        using var provider = new ServiceCollection().BuildServiceProvider(); // Sem DbContext: guarda deve agir antes do banco.
+        var importer = new PdfBatchImporter(new PdfFileInspector(), new PdfPigTextExtractor(),
+            provider.GetRequiredService<IServiceScopeFactory>(), new TestEnvironment());
+        var options = new ImportOptions { SourcePath = source, TargetRootPath = Path.Combine(temporary, "target"),
+            ReportDirectory = Path.Combine(temporary, "reports"), CodigoCnsServentia = "TESTE0001",
+            Categorias = new() { ["Categoria"] = new() { TipoDocumento = "CategoriaFicticia" } } };
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(source, "Categoria"));
+            var file = Path.Combine(source, "Categoria", "A.pdf");
+            await File.WriteAllBytesAsync(file, CreatePdf("PLANO FICTICIO ORIGINAL"));
+            if (change == "com-falhas")
+                await File.WriteAllBytesAsync(Path.Combine(source, "Categoria", "sem-texto.pdf"), CreatePdf(""));
+            await importer.RunAsync(options, execute: false);
+            options.ApprovedPlanPath = Directory.GetFiles(options.ReportDirectory).Single();
+            switch (change)
+            {
+                case "ausente": options.ApprovedPlanPath = ""; break;
+                case "alterado": await File.WriteAllBytesAsync(file, CreatePdf("TEXTO FICTICIO MODIFICADO")); break;
+                case "adicionado": await File.WriteAllBytesAsync(Path.Combine(source, "Categoria", "B.pdf"), CreatePdf("NOVO FICTICIO")); break;
+                case "removido": File.Delete(file); break;
+                case "categoria": options.Categorias["Categoria"].TipoDocumento = "OutraCategoria"; break;
+                case "serventia": options.CodigoCnsServentia = "OUTRO_FICTICIO"; break;
+                case "banco": options.DatabaseIdentity = "OUTRO_BANCO_FICTICIO"; break;
+                case "ambiente": options.ExecutionContext = "OUTRO_AMBIENTE_FICTICIO"; break;
+                case "destino": options.TargetRootPath = Path.Combine(temporary, "outro-target"); break;
+                case "incompleto":
+                    var lines = await File.ReadAllLinesAsync(options.ApprovedPlanPath);
+                    await File.WriteAllLinesAsync(options.ApprovedPlanPath, lines[..^1]);
+                    break;
+            }
+            await Assert.ThrowsAsync<ImportPlanException>(() => importer.RunAsync(options, execute: true));
+            Assert.False(Directory.Exists(options.TargetRootPath));
+            Assert.Single(Directory.GetFiles(options.ReportDirectory));
         }
         finally { if (Directory.Exists(temporary)) Directory.Delete(temporary, true); }
     }

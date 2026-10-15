@@ -39,7 +39,7 @@ def main():
     (folder / "COPIA-001.PDF").write_bytes(original)
     config = work / "importacao.json"
     config.write_text(json.dumps({"Importacao": {"SourcePath": "/source", "TargetRootPath": "/data/input",
-        "ReportDirectory": "/reports", "CodigoCnsServentia": "TESTE0001", "Categorias": {
+        "ReportDirectory": "/reports", "CodigoCnsServentia": "TESTE0001", "ApprovedPlanPath": "/reports/plano-nao-selecionado.ndjson", "Categorias": {
             "Habilitações": {"TipoDocumento": "HabilitacaoCasamento", "AnoPorSubpasta": True}}}}, ensure_ascii=False), encoding="utf-8")
     target = work / "target"
     target.mkdir()
@@ -55,7 +55,8 @@ def main():
     assert not list(target.iterdir()), "Simulação escreveu no destino"
     lines = report.glob("*.ndjson")
     entries = [json.loads(line) for line in next(lines).read_text().splitlines()]
-    assert entries[0]["AnoReferencia"] == 2025 and entries[0]["Paginas"] == 1
+    assert entries[0]["Modo"] == "Simulacao" and entries[0]["Versao"] == 1
+    assert entries[1]["AnoReferencia"] == 2025 and entries[1]["Paginas"] == 1
     command = ["docker", "compose", "-f", "compose.yaml", "-f", "compose.import.yaml",
         "--profile", "importacao", "run", "--rm", "--no-deps", "-e", "ConnectionStrings__RegistroDoc=", "importer"]
     for args in (["--import-plan", "--import-execute"],
@@ -65,8 +66,23 @@ def main():
         assert invalid.returncode == 1, "Configuração inválida não foi rejeitada com código 1"
         assert "/config-inexistente-ficticia.json" not in invalid.stderr, "Erro expôs caminho de configuração"
     assert not list(target.iterdir()), "Configuração inválida escreveu no destino"
+    guarded = ["docker", "compose", "-f", "compose.yaml", "-f", "compose.import.yaml",
+        "--profile", "importacao", "run", "--rm", "--no-deps", "-e",
+        "ConnectionStrings__RegistroDoc=Host=127.0.0.1;Port=1;Database=nao_usar;Username=nao_usar", "importer", "--import-execute"]
+    missing = subprocess.run(guarded, cwd=root, env=env, capture_output=True, text=True)
+    assert missing.returncode == 1 and "Plano ausente" in missing.stderr, "Execução sem plano chegou ao banco"
+    selected = next(report.glob("*.ndjson"))
+    reviewed = subprocess.run(guarded + ["--Importacao:ApprovedPlanPath", "/reports/" + selected.name],
+                              cwd=root, env=env, capture_output=True, text=True)
+    assert reviewed.returncode == 1 and "iniciar ou concluir" in reviewed.stderr and "Plano ausente" not in reviewed.stderr, "Argumento explícito de plano não prevaleceu sobre o JSON"
+    (folder / "PROCESSO-001.pdf").write_bytes(pdf("FICTICIO MODIFICADO APOS PLANEJAMENTO"))
+    stale = subprocess.run(guarded + ["--Importacao:ApprovedPlanPath", "/reports/" + selected.name],
+                           cwd=root, env=env, capture_output=True, text=True)
+    assert stale.returncode == 1 and "Plano ausente" in stale.stderr, "Plano alterado chegou ao banco"
+    assert not list(target.iterdir()), "Plano divergente escreveu no destino"
     print("OK: CLI simula PDFs pesquisáveis, lê ano/categoria, detecta duplicação e preserva originais; zero importações")
     print("OK: CLI rejeita modos conflitantes, configuração ausente e carga sem conexão; erros sem caminhos internos")
+    print("OK: CLI bloqueia execução sem plano e PDF alterado antes de acessar o banco ou gravar no destino")
 
 
 if __name__ == "__main__":

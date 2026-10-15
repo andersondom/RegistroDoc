@@ -6,6 +6,9 @@ public sealed class ImportOptions
     public string TargetRootPath { get; set; } = "";
     public string CodigoCnsServentia { get; set; } = "";
     public string ReportDirectory { get; set; } = "artifacts/importacao";
+    public string ApprovedPlanPath { get; set; } = "";
+    public string DatabaseIdentity { get; set; } = "";
+    public string ExecutionContext { get; set; } = "";
     public Dictionary<string, ImportCategory> Categorias { get; set; } = new();
 }
 

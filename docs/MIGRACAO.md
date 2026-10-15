@@ -1,4 +1,6 @@
-# Importação do acervo digitalizado — definição inicial
+# Importação do acervo digitalizado
+
+Estado atual: importador de PDFs pesquisáveis implementado, com operação por plano revisado. As seções iniciais preservam a investigação histórica; as instruções de operação abaixo refletem o fluxo atual. OCR e painel Web de lotes não fazem parte desta entrega.
 
 Solicitação recebida em 2026-10-13: criar ferramenta integrada ao RegistroDoc para carregar arquivos já digitalizados e ler seu conteúdo. Desenvolvimento na branch `feature/migracao-acervo-digitalizado`; nenhuma importação realizada nesta etapa.
 
@@ -72,12 +74,35 @@ docker compose -f compose.yaml -f compose.import.yaml --profile importacao run -
 Depois de revisar o relatório e autorizar a carga no banco/acervo escolhido:
 
 ```powershell
-docker compose -f compose.yaml -f compose.import.yaml --profile importacao run --rm --no-deps importer --import-execute
+docker compose -f compose.yaml -f compose.import.yaml --profile importacao run --rm --no-deps importer --import-execute --Importacao:ApprovedPlanPath /reports/NOME-DO-PLANO-REVISADO.ndjson
 ```
 
 O banco já deve estar ativo e provisionado. O importador não executa migrações de schema. Em produção, usar também o arquivo de ambiente e as sobreposições correspondentes ao servidor, conferindo origem/destino antes de executar.
 
-Os mesmos modos podem ser usados com `dotnet run --project src/RegistroDoc.Indexer -- --import-plan --Importacao:ConfigPath caminho-config-local`, ou `--import-execute`. Nesse caso, configurar caminhos do host no JSON e fornecer a conexão por variável `ConnectionStrings__RegistroDoc` somente quando for executar; nunca colocar credenciais no comando ou no arquivo versionado.
+Os mesmos modos podem ser usados com `dotnet run --project src/RegistroDoc.Indexer -- --import-plan --Importacao:ConfigPath caminho-config-local`, ou `--import-execute --Importacao:ApprovedPlanPath caminho-do-plano`. Nesse caso, configurar caminhos do host no JSON e fornecer a conexão por variável `ConnectionStrings__RegistroDoc` tanto na simulação quanto na execução: sua identidade faz parte do plano, embora a simulação não acesse o banco. Nunca colocar credenciais no comando ou no arquivo versionado.
+
+## Operação assistida por terminal — 2026-10-14
+
+O lançador [importar_acervo.py](../tools/importar_acervo.py) verifica as pastas físicas, as montagens somente leitura e a correspondência entre destino e raiz da API. Requer Python, Docker e as quatro variáveis `IMPORT_SOURCE_PATH`, `IMPORT_TARGET_PATH`, `IMPORT_REPORT_PATH` e `IMPORT_CONFIG_PATH` explicitamente definidas. As pastas devem existir e estar separadas; configuração e relatórios devem ficar em área privada, fora do versionamento.
+
+```powershell
+python tools/importar_acervo.py verificar
+python tools/importar_acervo.py simular
+```
+
+Revisar o arquivo `.ndjson` gerado na pasta privada: categorias, anos, contagens, duplicações e falhas. A simulação não verifica cadastro da serventia nem conflitos com documentos já existentes no banco. Com autorização específica para o lote e o destino, executar:
+
+```powershell
+python tools/importar_acervo.py executar --plano NOME-DO-PLANO-REVISADO.ndjson
+```
+
+Em produção, usar `--production --env-file CAMINHO-DO-AMBIENTE-LOCAL` em todas as ações. O lançador inclui a sobreposição de produção, sem iniciar banco/API nem aplicar migrações.
+
+O plano deve estar completo e sem falhas, com ao menos um PDF pronto. Alterações nos arquivos, categorias, serventia, destino ou identidade da conexão exigem nova simulação. Pelo lançador, o plano também fica vinculado às pastas físicas, ao Docker e ao projeto Compose. A execução verifica o lote antes de acessar o banco; erros posteriores podem deixar itens já importados, portanto não há transação única de lote. A retomada usa a detecção de duplicações existente. Não editar o relatório para contornar a validação: ele registra a revisão operacional, não constitui assinatura digital nem controle de autorização do operador.
+
+Relatórios antigos sem cabeçalho de versão não são aceitos como planos. Gerar uma nova simulação com a versão atual e usar o mesmo meio de operação para simular e executar.
+
+Para cada piloto, definir uma pasta contendo somente o lote autorizado, conferir o mapeamento e a serventia, preparar backup e revisar a simulação. Após a carga, conferir contagens, pesquisa por categoria/ano e abertura autenticada de PDFs. O piloto local de 411 PDFs foi concluído e conferido em 2026-10-15, conforme [PROGRESSO](PROGRESSO.md); cinco PDFs aguardam OCR externo. A instalação no servidor permanece pendente.
 
 ## Comportamento e relatórios
 

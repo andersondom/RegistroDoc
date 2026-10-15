@@ -181,6 +181,67 @@ Branch: `fix/pesquisa-paginacao-pdf`, criada a partir de `docs/handoff-codex-202
 - Documentação operacional e requisitos atualizados. Ferramenta disponível por terminal/Docker; painel de lotes não incluído. Carga de volume representativo, mapeamento da origem real e autorização de carga permanecem necessários; nenhum acervo real usado. Main não alterada; desenvolvimento em `feature/migracao-acervo-digitalizado`, sem merge/publicação.
 - Commit de implementação: `7af7182` — importação de PDFs pesquisáveis por categoria/ano, filtro Web e verificações. Árvore de trabalho limpa após consolidação; registro deste identificador em commit documental separado.
 
+## Validação da operação por plano revisado — 2026-10-14
+
+- Continuidade solicitada pelo usuário. Revisados e preservados os ajustes locais preexistentes na branch `feature/migracao-acervo-digitalizado`: plano obrigatório, identificação do destino, lançador Python, proteção do contexto Docker e testes. Nenhum merge ou push nesta etapa.
+- Execução exige relatório de simulação completo, sem falhas e compatível com arquivos, categorias, serventia e destino. Validação antecede conexão ao banco; o lançador confere pastas físicas, montagens somente leitura e raiz da API. O plano não substitui autorização do operador nem é assinatura digital. Falhas durante a carga podem deixar itens concluídos; retomada utiliza detecção de duplicações.
+- `dotnet build RegistroDoc.slnx --no-restore`: aprovado, zero avisos e erros.
+- `docker compose -f compose.validation.yaml up --abort-on-container-exit --exit-code-from tests`: aprovado, 9 unitários e 21 de integração, zero falhas/ignorados. Banco temporário separado; serviços de validação parados pelo Compose ao concluir.
+- `python -B -m unittest discover -s tests -p test_importar_acervo.py -v`: 8 aprovados no Windows e 1 ignorado por permissão de criação de link. Repetição em `python:3.14-slim`, repositório montado somente leitura: 9 aprovados, zero ignorados.
+- `python -u tests/validar_operacao_importacao.py`: aprovado; lançou verificação/simulação com PDF fictício, validou montagens/API e bloqueou execução sem plano ou com destino incorreto. Imagem importer reconstruída pelo lançador. Zero importações no banco principal.
+- `python -u tests/validar_importacao_cli.py`: aprovado; simulação, duplicação, preservação de origem, erros de configuração, precedência do argumento de plano sobre JSON e rejeição de plano ausente/PDF modificado antes da carga. Conexão deliberadamente inacessível; zero importações.
+- README e MIGRACAO atualizados com comandos do lançador, plano obrigatório, incompatibilidade de relatórios antigos e roteiro do piloto. Testes HTTP/Edge e carga não repetidos nesta etapa, que não altera Web/API.
+- Etapa técnica validada com dados fictícios. Alterações permanecem locais, sem commit desta continuidade. Próximo marco operacional: definir lote piloto, conferir mapeamento/CNS e destino, preparar backup e obter autorização específica para carga. Nenhum dado real usado ou banco persistido alterado. Implantação, auditoria e carga representativa continuam pendentes.
+
+## Simulação local do lote piloto — 2026-10-14
+
+- Usuário definiu o diretório apresentado como lote piloto e confirmou que os próximos documentos seguirão a mesma estrutura de tipos, anos e subtipos. Autorizada a leitura/simulação; carga no banco não executada.
+- Configuração local privada com 14 regras ajustadas à grafia da origem; caminhos e identificação dos arquivos não versionados. Simulação usa a serventia fictícia do ambiente local, sem validar cadastro no banco. CNS de destino deve ser confirmado antes da carga.
+- `python -u tools/importar_acervo.py simular`, com variáveis locais: concluído com código 1, resultado de 416 PDFs, 411 prontos, 5 classificados como `SemTextoPesquisavel`, 0 duplicados e 0 importados. Pendências: 2 em Suprimento de Óbito e 3 em Requerimento de Mudança de Nome. Classificação do importador exige conferência dos arquivos; não foi aplicado OCR.
+- Relatório completo, configuração e lista das pendências mantidos somente em área local ignorada pelo Git e Docker. Nenhum conteúdo extraído, nome documental ou caminho da origem incluído nesta documentação.
+- Plano com falhas bloqueado para execução. Próximo passo: conferir/corrigir os cinco documentos ou definir explicitamente um lote que os exclua, gerar nova simulação sem falhas e obter autorização de carga com destino/CNS confirmado. Não houve cópia de PDFs para o acervo do sistema, alteração do banco, commit, merge ou push.
+
+## Separação das pendências para OCR pelo usuário — 2026-10-14
+
+- Usuário optou por realizar o OCR externamente e devolver os PDFs corrigidos à origem. Preparação automática de OCR interrompida; nenhuma correção automática declarada concluída.
+- Cinco PDFs pendentes copiados para pasta privada `artifacts/piloto-local/para-ocr`, preservando a hierarquia relativa. SHA-256 de cada cópia conferido contra o original; originais mantidos intactos. Arquivos ignorados pelo Git e Docker.
+- Aguardar devolução dos documentos com texto pesquisável. Depois, repetir a simulação completa, pois a alteração dos PDFs invalida o plano anterior. Nenhuma importação no banco executada.
+- A pedido do usuário, as cinco cópias foram posteriormente movidas para a raiz da origem, sem sobrescrita e com conferência de SHA-256. Originais nas subpastas preservados. Após OCR, devolver as cópias corrigidas às posições originais e retirar as cópias de trabalho da raiz antes de nova simulação, evitando itens adicionais sem categoria.
+
+## Continuidade do piloto sem as pendências de OCR — 2026-10-14
+
+- Usuário informou que os cinco PDFs corrigidos estarão disponíveis no dia seguinte e pediu continuidade. Preparado lote privado separado com os 411 PDFs aprovados; cópias verificadas por SHA-256 contra o relatório anterior, preservando hierarquia e originais. As cinco pendências e suas cópias na raiz não integram esse lote.
+- Nova simulação pelo lançador para o lote separado: 411 PDFs prontos, 23.032 páginas, zero duplicações, zero falhas e zero importações. Configuração, manifesto e plano mantidos somente em `artifacts/piloto-prontos`, ignorado pelo Git/Docker.
+- Simulação mantém `TESTE0001` como referência; solicitada escolha do usuário entre cadastro de teste e CNS real antes de cadastrar documentos. Nenhuma alteração do banco realizada. Se o CNS mudar, gerar novo plano compatível antes da execução.
+- Substituição dos cinco documentos após OCR já autorizada pelo usuário: conferir devolução, preservar cópia de segurança dos originais, substituir nos destinos mapeados e validar. Essa substituição ainda não foi executada. Carga do lote de 411 e tratamento posterior dos cinco permanecem como próximos marcos.
+
+## Preparação do piloto com CNS informado — 2026-10-14
+
+- Usuário informou CNS real e solicitou continuidade. Código aplicado somente à configuração privada do lote; identificação operacional não adicionada ao versionamento.
+- Docker Desktop estava desligado; iniciado e conexão recuperada. Consulta somente leitura confirmou ausência do CNS informado no cadastro local e 2.023 documentos preexistentes. Solicitados nome da serventia, município e UF para cadastro correto; nenhuma serventia criada ou alterada.
+- Backup do banco local criado em área privada do piloto com `pg_dump -Fc`; 423.547 bytes, SHA-256 registrado localmente e índice lido por `pg_restore --list`. Não foi executada restauração deste backup; não confundir leitura do índice com ensaio de recuperação.
+- Nova simulação com o CNS informado concluída com código 0: 411 prontos, zero falhas, zero duplicações, zero importações. Plano anterior com CNS fictício não deve ser utilizado para carga.
+- Próximo passo depende dos dados cadastrais solicitados. Banco e acervo da API permanecem sem carga real; cinco PDFs aguardam OCR pelo usuário. Plano, backup, configurações e documentos continuam privados e ignorados por Git/Docker. Sem commit, merge ou push.
+
+## Ponto de retomada — carga do piloto concluída — 2026-10-15
+
+- Usuário solicitou salvar o estado e continuar. Branch preservada: `feature/migracao-acervo-digitalizado`, com alterações locais ainda sem commit; main não alterada.
+- Serventia real cadastrada e conferida com os dados fornecidos pelo usuário; UF normalizada para SE. Identificação completa permanece somente nos arquivos privados do piloto. Cadastro e carga foram autorizados na conversa e nas execuções correspondentes; não repetir cadastro nem importar o lote novamente sem necessidade.
+- A carga iniciada na sessão anterior terminou enquanto o acompanhamento estava interrompido. Relatório final privado de execução: **411 importados, zero falhas, zero duplicações**. Último acompanhamento parcial tinha 263 documentos; esse número foi superado pelo fechamento do relatório, lido nesta retomada.
+- Plano de 411 PDFs compreende 23.032 páginas. Conferência independente de banco, hashes, pesquisa e PDF ainda pendente neste ponto; roteiro privado preparado em `artifacts/piloto-prontos/validar_carga.py`, ainda sem resultado salvo.
+- Backup anterior à carga permanece em `artifacts/piloto-prontos/backup`; índice validado e hash registrado, sem restauração executada. Configuração, plano, manifesto, cadastro e relatórios permanecem privados/ignorados. Não incluir PDFs, textos, caminhos externos ou credenciais no Git.
+- Cinco documentos continuam pendentes de OCR pelo usuário. Cópias foram colocadas na raiz da origem; relação dos destinos está em `artifacts/piloto-local/pendencias.json`. Substituição autorizada após devolução: verificar os corrigidos, guardar backup dos originais e substituir nas subpastas; ainda não executada. Não importar a raiz contendo essas cópias como se fosse novo lote.
+- Próxima ação: executar a conferência pós-carga e registrar resultado; depois tratar os cinco PDFs quando o usuário confirmar a devolução. Não declarar implantação de produção concluída; auditoria, HTTPS e controles operacionais continuam pendentes. Não realizar merge sem autorização explícita.
+
+## Validação pós-carga e estado salvo para continuidade — 2026-10-15
+
+- Executado `python -u artifacts/piloto-prontos/validar_carga.py`: resultado final aprovado. Conferidos **411 documentos concluídos, 23.032 páginas cadastradas, metadados de categoria/ano e 411 hashes dos PDFs armazenados** contra o manifesto do lote.
+- Validação HTTP autenticada aprovada: pesquisa por texto, filtro por categoria/ano, paginação sem repetição, leitura de um PDF de cada uma das **13 categorias** com comparação de hash, MIME, cache e range; URLs das amostras bloqueadas após logout. Não houve homologação visual humana de todos os documentos.
+- Primeira tentativa do roteiro terminou em `AttributeError` ao criar o gerenciador de cookies, após as conferências de banco/arquivos. Corrigido somente o roteiro privado e repetida a execução completa; resultado final sem falhas em `artifacts/piloto-prontos/validacao-carga.json`. Nenhuma correção no produto necessária nesta etapa.
+- **Estado atual:** lote de 411 documentos importado e conferido. Não executar novamente a carga por padrão nem restaurar o backup sobre o banco atual. Dados anteriores preservados. Os cinco PDFs sem texto continuam aguardando OCR/devolução pelo usuário; não foram substituídos nem importados.
+- **Retomada:** ler este último marco; verificar branch/árvore local; consultar o resultado privado da validação. Quando o usuário confirmar os cinco PDFs corrigidos na raiz da origem, conferir texto e correspondência, preservar backup dos originais, substituir nos destinos de `artifacts/piloto-local/pendencias.json` e preparar lote separado com o CNS da configuração atual de `artifacts/piloto-prontos/config.json`. A configuração antiga de `piloto-local` ainda contém o CNS fictício e não deve ser usada para carga real. Gerar/revisar nova simulação antes da carga complementar.
+- Trabalho permanece na branch `feature/migracao-acervo-digitalizado`, com alterações locais sem commit, sem merge/push. Histórico de build e testes técnicos anteriores preservado; build/suítes .NET não repetidos nesta retomada operacional. Produção continua dependente dos controles de OPERACAO.md. Estado registrado a pedido do usuário; nenhum segredo ou documento privado incluído no versionamento.
+
 ## Comandos não destrutivos úteis
 - git status
 - dotnet build RegistroDoc.slnx

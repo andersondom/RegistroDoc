@@ -26,4 +26,4 @@ Continuar o GED RegistroDoc existente para serventias de Registro Civil, sem rec
 - Atualizar docs/PROGRESSO.md após cada marco; se regras permanentes mudarem, atualizar este arquivo.
 
 ## Próxima tarefa prioritária
-Corrigir a homologação funcional: paginação, nova pesquisa após paginação e abertura de PDF. Ver docs/HOMOLOGACAO.md. Investigar src/RegistroDoc.Web/Components/Pages/Pesquisa.razor, rotas de PDF, integração com API e autenticação. Separar causas comprovadas de hipóteses. Não alterar a main diretamente.
+O fluxo de pesquisa/PDF e o lote piloto de 411 PDFs foram validados. Consultar o último marco de docs/PROGRESSO.md antes de operar o banco; não repetir a carga por padrão. Os cinco documentos em OCR aguardam devolução pelo usuário. Analisar as próximas intervenções em docs/PROXIMAS-ETAPAS.md, começando por auditoria de acesso e perfis. Implementar novos incrementos em branches próprias; não alterar a main diretamente. Dados do piloto ficam somente nas áreas privadas ignoradas, nunca no conteúdo versionado.

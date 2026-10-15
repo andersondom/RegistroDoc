@@ -8,6 +8,8 @@
 
 .env
 .env.*
+**/appsettings.Production.json
+**/appsettings.*.local.json
 
 data
 storage

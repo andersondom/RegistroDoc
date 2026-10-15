@@ -79,7 +79,11 @@ Validação da ferramenta, com PDFs exclusivamente fictícios e sem carga:
 python -u tests/validar_importacao_cli.py
 ```
 
-O script requer a imagem `registrodoc-importer` já construída. A integração de carga/pesquisa/PDF é verificada pela suíte em banco isolado, agora com 9 testes unitários e 10 de integração.
+O script requer a imagem do serviço `importer` já construída. A integração de carga/pesquisa/PDF é verificada pela suíte em banco isolado, agora com 9 testes unitários e 21 de integração.
+
+Para operar o lote, use [tools/importar_acervo.py](tools/importar_acervo.py): ações `verificar`, `simular` e `executar --plano NOME.ndjson`. O lançador confere pastas e montagens; a execução exige um plano completo, sem falhas e compatível com os arquivos e destino atuais. As quatro variáveis `IMPORT_SOURCE_PATH`, `IMPORT_TARGET_PATH`, `IMPORT_REPORT_PATH` e `IMPORT_CONFIG_PATH` são obrigatórias no lançador. Siga o roteiro de [migração](docs/MIGRACAO.md) antes de autorizar uma carga.
+
+Validações do lançador: `python -B -m unittest discover -s tests -p test_importar_acervo.py -v` e `python -u tests/validar_operacao_importacao.py`. O segundo usa apenas origem fictícia e simulação, sem carga no banco principal.
 
 ## Índice de pesquisa
 
@@ -91,4 +95,4 @@ A migração `20261007180000_AddTrigramSearchIndex` instala a extensão PostgreS
 
 ## Status
 
-MVP funcional homologado tecnicamente com dados fictícios: 14 testes da suíte completa aprovados, roteiros HTTP/Edge e expiração real aprovados. Usuário aprovou visual e leitura do PDF. Backup/restauração em banco temporário e carga moderada local executados; evidências e limites em `docs/HOMOLOGACAO.md` e `docs/PROGRESSO.md`. Pacote de produção preparado; instalação, auditoria dos acessos, configuração operacional e acervo real dependem da etapa descrita em `docs/OPERACAO.md`. Merge na main ainda exige aprovação explícita.
+MVP funcional homologado com dados fictícios e integrado à main local mediante autorização em 2026-10-13. Usuário aprovou visual e leitura do PDF. Importador e operação por plano revisado desenvolvidos na branch `feature/migracao-acervo-digitalizado`; validação de 2026-10-14: 9 testes unitários, 21 de integração e 9 do lançador aprovados em Linux. Evidências históricas de HTTP/Edge, expiração real, backup/restauração e carga moderada permanecem em [HOMOLOGACAO](docs/HOMOLOGACAO.md) e [PROGRESSO](docs/PROGRESSO.md). Pacote de produção preparado; instalação, auditoria dos acessos, configuração operacional e acervo real dependem de [OPERACAO](docs/OPERACAO.md). A etapa de importação ainda não foi integrada à main.

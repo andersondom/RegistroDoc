@@ -15,10 +15,12 @@ if (plan && execute)
     return;
 }
 var importMode = plan || execute;
-var builder = Host.CreateApplicationBuilder(args.Where(a => a is not "--import-plan" and not "--import-execute").ToArray());
+var hostArgs = args.Where(a => a is not "--import-plan" and not "--import-execute").ToArray();
+var builder = Host.CreateApplicationBuilder(hostArgs);
 if (importMode && builder.Configuration["Importacao:ConfigPath"] is { Length: > 0 } configPath)
 {
-    try { builder.Configuration.AddJsonFile(Path.GetFullPath(configPath), optional: false).AddEnvironmentVariables(); }
+    try { builder.Configuration.AddJsonFile(Path.GetFullPath(configPath), optional: false)
+        .AddEnvironmentVariables().AddCommandLine(hostArgs); }
     catch (Exception)
     {
         Console.Error.WriteLine("Não foi possível ler a configuração local de importação.");
@@ -99,11 +101,20 @@ if (importMode)
     try
     {
         var options = builder.Configuration.GetSection("Importacao").Get<ImportOptions>() ?? new();
+        if (!string.IsNullOrWhiteSpace(connectionString))
+        {
+            var database = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+            // Identidade do destino sem senha; a simulação continua sem acessar o banco.
+            options.DatabaseIdentity = JsonSerializer.Serialize(new { database.Host, database.Port,
+                database.Database, database.Username, database.SearchPath });
+        }
+        else options.DatabaseIdentity = "SemConexaoConfigurada";
         var summary = await host.Services.GetRequiredService<PdfBatchImporter>().RunAsync(options, execute, cancellation.Token);
         Console.WriteLine(JsonSerializer.Serialize(summary));
         Environment.ExitCode = summary.Falhas == 0 ? 0 : 1;
     }
     catch (OperationCanceledException) { Console.Error.WriteLine("Importação cancelada; relatório parcial preservado."); Environment.ExitCode = 130; }
+    catch (ImportPlanException) { Console.Error.WriteLine("Plano ausente, incompleto ou divergente. Gere e revise uma nova simulação antes da carga."); Environment.ExitCode = 1; }
     catch (Exception) { Console.Error.WriteLine("Não foi possível iniciar ou concluir a importação. Confira a configuração e o relatório privado."); Environment.ExitCode = 1; }
 }
 else await host.RunAsync();
