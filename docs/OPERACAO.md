@@ -8,7 +8,7 @@ Pacote preparado em 2026-10-09. A homologação do MVP utiliza apenas dados fict
 - Certificado PFX válido para o endereço usado pelos clientes, emitido por autoridade confiável na rede. Clientes precisam confiar na cadeia; não desativar validação TLS para operação.
 - Diretório do acervo e do certificado com acesso restrito. A conta da API recebe leitura; gravação de arquivos exige uma conta de ingestão separada. Não usar links simbólicos no acervo.
 - Banco provisionado com as migrações da API e IdentityHub e configuração da serventia revisada. A API em Production não cria schema ou serventia fictícia automaticamente; o IdentityHub atual aplica suas migrações no início. Aprovar qualquer preparação/migração do banco antes de executar no servidor.
-- Contas e política de acesso definidas. A API atual exige autenticação, mas não separa acervo por serventia/usuário; este MVP pressupõe instalação dedicada a uma serventia. O serviço de auditoria existe, mas os endpoints de pesquisa/PDF ainda não o invocam; definir e implementar a política de auditoria antes de usar acervo real.
+- Contas e política de acesso definidas. A API atual exige autenticação, mas não separa acervo por serventia/usuário; este MVP pressupõe instalação dedicada a uma serventia. Auditoria de pesquisa/PDF implementada conforme [AUDITORIA](AUDITORIA.md); integrar a entrega e reconstruir a API para ativá-la. Definir retenção, responsável e acesso administrativo aos eventos antes de produção.
 
 ## Configuração e inicialização
 

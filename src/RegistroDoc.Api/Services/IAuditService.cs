@@ -2,6 +2,11 @@
 
 public interface IAuditService
 {
+    Task<Guid> IniciarAcessoAsync(string acao, Guid? documentoId, bool parcial,
+        CancellationToken cancellationToken = default);
+    Task ConcluirAcessoAsync(Guid id, int? statusHttp, string resultado,
+        CancellationToken cancellationToken = default);
+
     Task RegistrarAsync(
         string entidade,
         string entidadeId,

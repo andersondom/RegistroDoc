@@ -140,7 +140,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseRouting();
 app.UseAuthentication();
+app.UseMiddleware<DocumentAuditMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

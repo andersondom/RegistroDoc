@@ -251,6 +251,17 @@ Branch: `fix/pesquisa-paginacao-pdf`, criada a partir de `docs/handoff-codex-202
 - Análise em [PROXIMAS-ETAPAS](PROXIMAS-ETAPAS.md): priorizar auditoria dos endpoints, depois perfis/contas, recuperação operacional, progresso de lotes e implantação/desempenho. Confirmado no código: serviço de auditoria registrado mas ainda não chamado pela pesquisa/PDF. Não foi iniciada implementação dessas intervenções.
 - Próximo incremento deve usar branch própria e escopo definido. Cinco PDFs em OCR continuam aguardando devolução; integração complementar segue o procedimento dos marcos anteriores. Piloto local concluído não equivale à liberação de produção.
 
+## Etapa 1 — auditoria de pesquisa/PDF concluída — 2026-10-15
+
+- Implementação na branch `feature/auditoria-acessos`, criada a partir de `6702c13`. Pesquisa e arquivo agora registram tentativa antes da autorização, com usuário validado (ou nulo), ação, horário UTC e documento; resultado/status atualizados ao terminar. Sem termos pesquisados, texto de PDF, tokens ou caminhos físicos na descrição. Sem alteração de esquema.
+- Política em [AUDITORIA](AUDITORIA.md): falha inicial bloqueia acesso com 503; falha final mantém tentativa iniciada e registra evento técnico 4102. Cancelamentos usam gravação independente da conexão do cliente. Cada range é uma requisição auditada; não se declara leitura humana nem entrega integral pelo simples registro. Retenção e acesso administrativo devem ser definidos para produção.
+- `dotnet build RegistroDoc.slnx --no-restore`: aprovado antes do alinhamento final de dependências. A primeira execução Docker aprovou 14 unitários e 22 de integração, mas revelou conflito de versão de EF Relational no projeto unitário. Fixada referência em 10.0.12, alinhada aos projetos existentes.
+- `dotnet build RegistroDoc.slnx`: restauração inicialmente bloqueada pelo sandbox (NU1301); repetida com permissão de rede e concluída sem avisos/erros.
+- `docker compose -f compose.validation.yaml up --abort-on-container-exit --exit-code-from tests`: repetido após correção; saída 0, **14 unitários e 22 de integração aprovados**, sem o conflito de dependências. Banco PostgreSQL temporário e documentos fictícios. Nenhuma carga, migração ou alteração no banco do piloto; containers operacionais não reconstruídos.
+- Cobertura nova: autoria de dois usuários, pesquisa, bytes de PDF completo/parcial, 206/416, 400/404, 401 ausente/inválido/expirado e 403 por política do teste, descrição sem conteúdo sensível; falha inicial/final, cancelamento e exceção. Sem nova homologação pelo navegador: a ausência de credencial representa o estado esperado após logout, cuja implementação permanece preservada. Não foram repetidos testes Python do importador, que não foi alterado.
+- Entrega preparada para commit solicitado pelo usuário. Consultar `git log -1 --oneline` para o identificador final. Não houve merge, push ou ativação nos containers do piloto nesta entrega. A ativação requer integração da branch e reconstrução da API.
+- **Próxima tarefa: etapa 2, perfis e contas individuais**, com critérios em [PROXIMAS-ETAPAS](PROXIMAS-ETAPAS.md). Definir matriz de permissões e responsáveis; implementar em branch própria preservando a auditoria. Cinco PDFs continuam aguardando OCR externo. Não repetir a carga dos 411 documentos.
+
 ## Comandos não destrutivos úteis
 - git status
 - dotnet build RegistroDoc.slnx

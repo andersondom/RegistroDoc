@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using RegistroDoc.Contracts.Search;
 using RegistroDoc.Infrastructure.Persistence;
 using RegistroDoc.Application.Documents;
+using RegistroDoc.Api.Services;
 
 namespace RegistroDoc.Api.Controllers;
 
@@ -24,6 +25,7 @@ public sealed class DocumentosController : ControllerBase
     }
 
     [HttpGet("{id:guid}/arquivo")]
+    [AuditarAcesso("LerPdf")]
     public async Task<IActionResult> ObterArquivo(
         Guid id,
         CancellationToken cancellationToken)
@@ -69,6 +71,7 @@ public sealed class DocumentosController : ControllerBase
     }
 
     [HttpGet("pesquisa")]
+    [AuditarAcesso("PesquisarDocumentos")]
     [ProducesResponseType<DocumentoSearchResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<DocumentoSearchResponse>> Pesquisar(
         [FromQuery] DocumentoSearchRequest request,
