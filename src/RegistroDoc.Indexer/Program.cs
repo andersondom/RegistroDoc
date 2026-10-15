@@ -100,6 +100,18 @@ if (importMode)
     Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; cancellation.Cancel(); };
     try
     {
+        using var identity = new HttpClient
+        {
+            BaseAddress = new Uri(builder.Configuration["IdentityHub:BaseUrl"] ?? "http://localhost:8081/"),
+            Timeout = TimeSpan.FromSeconds(10)
+        };
+        if (execute)
+        {
+            // Credenciais apenas por stdin: nunca argumentos, configuração ou relatório.
+            var credentials = JsonSerializer.Deserialize<ImportAuthorization.Credentials>(await Console.In.ReadLineAsync(cancellation.Token) ?? "null");
+            if (credentials is null) throw new UnauthorizedAccessException();
+            await ImportAuthorization.LoginAsync(identity, credentials.Email, credentials.Password, cancellation.Token);
+        }
         var options = builder.Configuration.GetSection("Importacao").Get<ImportOptions>() ?? new();
         if (!string.IsNullOrWhiteSpace(connectionString))
         {
@@ -109,11 +121,13 @@ if (importMode)
                 database.Database, database.Username, database.SearchPath });
         }
         else options.DatabaseIdentity = "SemConexaoConfigurada";
-        var summary = await host.Services.GetRequiredService<PdfBatchImporter>().RunAsync(options, execute, cancellation.Token);
+        var summary = await host.Services.GetRequiredService<PdfBatchImporter>().RunAsync(options, execute, cancellation.Token,
+            execute ? ct => ImportAuthorization.CheckAsync(identity, ct) : null);
         Console.WriteLine(JsonSerializer.Serialize(summary));
         Environment.ExitCode = summary.Falhas == 0 ? 0 : 1;
     }
     catch (OperationCanceledException) { Console.Error.WriteLine("Importação cancelada; relatório parcial preservado."); Environment.ExitCode = 130; }
+    catch (UnauthorizedAccessException) { Console.Error.WriteLine("Carga não autorizada. Use uma conta ativa de Operador ou Administrador e confira a validade da sessão."); Environment.ExitCode = 1; }
     catch (ImportPlanException) { Console.Error.WriteLine("Plano ausente, incompleto ou divergente. Gere e revise uma nova simulação antes da carga."); Environment.ExitCode = 1; }
     catch (Exception) { Console.Error.WriteLine("Não foi possível iniciar ou concluir a importação. Confira a configuração e o relatório privado."); Environment.ExitCode = 1; }
 }

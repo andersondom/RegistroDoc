@@ -92,6 +92,7 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Events = new JwtBearerEvents { OnTokenValidated = AccountTokenValidation.ValidateAsync };
         options.TokenValidationParameters =
             new TokenValidationParameters
             {

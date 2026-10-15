@@ -20,7 +20,11 @@ builder.Services.AddRazorComponents()
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(SessionCookieConfiguration.Configure);
+    .AddCookie(options =>
+    {
+        SessionCookieConfiguration.Configure(options);
+        options.Events.OnValidatePrincipal = AccountCookieValidation.ValidateAsync;
+    });
 
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
@@ -45,7 +49,10 @@ builder.Services.AddHttpClient(
 
 builder.Services.AddHttpClient(
     "RegistroDoc.IdentityHub",
-    client => client.BaseAddress = new Uri(identityHubBaseUrl));
+    client => { client.BaseAddress = new Uri(identityHubBaseUrl); client.Timeout = TimeSpan.FromSeconds(5); });
+builder.Services.AddHttpClient("RegistroDoc.IdentityAdmin",
+    client => { client.BaseAddress = new Uri(identityHubBaseUrl); client.Timeout = TimeSpan.FromSeconds(10); })
+    .AddHttpMessageHandler<ApiTokenHandler>();
 
 var app = builder.Build();
 
@@ -128,7 +135,7 @@ app.MapPost("/auth/login", async (
     return Results.Redirect("/pesquisa");
 });
 
-app.MapPost("/auth/logout", async (HttpContext httpContext, IAntiforgery antiforgery) =>
+app.MapPost("/auth/logout", async (HttpContext httpContext, IAntiforgery antiforgery, IHttpClientFactory clients) =>
 {
     try
     {
@@ -139,10 +146,19 @@ app.MapPost("/auth/logout", async (HttpContext httpContext, IAntiforgery antifor
         return Results.BadRequest();
     }
 
+    var revoked = false;
+    try
+    {
+        using var client = clients.CreateClient("RegistroDoc.IdentityAdmin");
+        using var response = await client.PostAsync("api/auth/logout", null, httpContext.RequestAborted);
+        revoked = response.IsSuccessStatusCode;
+    }
+    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { }
+
     await httpContext.SignOutAsync(
         CookieAuthenticationDefaults.AuthenticationScheme);
 
-    return Results.Redirect("/login");
+    return Results.Redirect(revoked ? "/login" : "/login?erro=logout");
 }).RequireAuthorization();
 
 app.MapGet("/documentos/{id:guid}/pdf", async (
@@ -174,5 +190,7 @@ app.MapGet("/documentos/{id:guid}/pdf", async (
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapAccountEndpoints();
 
 app.Run();

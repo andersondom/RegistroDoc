@@ -1,0 +1,14 @@
+@page "/conta"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+<PageTitle>Minha conta - RegistroDoc</PageTitle>
+<h1>Alterar minha senha</h1>
+@if (Erro is not null) { <p role="alert">Não foi possível alterar a senha. Confira a senha atual e os requisitos ou tente novamente.</p> }
+<form method="post" action="/conta/senha" data-enhance="false" class="card card-body">
+    <AntiforgeryToken />
+    <label>Senha atual <input class="form-control" type="password" name="atual" autocomplete="current-password" required maxlength="128" /></label>
+    <label>Nova senha <input class="form-control" type="password" name="senha" autocomplete="new-password" required minlength="10" maxlength="128" /></label>
+    <p>Ao menos 10 caracteres, incluindo maiúscula, minúscula, número e símbolo. A alteração encerra suas sessões.</p>
+    <button class="btn btn-primary" type="submit">Alterar senha</button>
+</form>
+@code { [SupplyParameterFromQuery] public string? Erro { get; set; } }

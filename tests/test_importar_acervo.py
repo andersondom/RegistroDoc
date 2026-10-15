@@ -4,6 +4,10 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
+from types import SimpleNamespace
+import contextlib
+import io
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("importar_acervo", ROOT / "tools" / "importar_acervo.py")
@@ -84,6 +88,28 @@ class ImportLauncherTests(unittest.TestCase):
             self.skipTest("Criação de link exige permissão neste host; repetir em Linux.")
         with self.assertRaises(tool.ImportConfigurationError):
             tool.validate_host_paths(self.source, alias, self.reports, self.config)
+
+    def test_execution_sends_credentials_only_via_stdin(self):
+        (self.reports / "plano.ndjson").write_text("ficticio")
+        environment = dict(IMPORT_SOURCE_PATH=str(self.source), IMPORT_TARGET_PATH=str(self.target),
+                           IMPORT_REPORT_PATH=str(self.reports), IMPORT_CONFIG_PATH=str(self.config))
+        configuration = {"name": "ficticio", "services": {}}
+        output = io.StringIO()
+        with mock.patch.dict(tool.os.environ, environment), \
+             mock.patch.object(tool, "compose_configuration", return_value=configuration), \
+             mock.patch.object(tool, "validate_api_target"), mock.patch.object(tool, "validate_importer_mounts"), \
+             mock.patch("builtins.input", return_value="operador@example.invalid"), \
+             mock.patch.object(tool.getpass, "getpass", return_value="SenhaFicticia!123"), \
+             mock.patch.object(tool.subprocess, "run", side_effect=[SimpleNamespace(stdout="engine"),
+                 SimpleNamespace(stdout='{"Total":0,"Prontos":0,"Importados":0,"Duplicados":0,"Falhas":0}', returncode=0)]) as run, \
+             contextlib.redirect_stdout(output):
+            self.assertEqual(tool.main(["executar", "--plano", "plano.ndjson"]), 0)
+        call = run.call_args
+        self.assertIn("-T", call.args[0])
+        self.assertNotIn("SenhaFicticia", str(call.args))
+        self.assertNotIn("SenhaFicticia", str(call.kwargs["env"]))
+        self.assertNotIn("SenhaFicticia", output.getvalue())
+        self.assertEqual(json.loads(call.kwargs["input"])["Password"], "SenhaFicticia!123")
 
 
 if __name__ == "__main__":

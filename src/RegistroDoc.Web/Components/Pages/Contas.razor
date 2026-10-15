@@ -1,0 +1,55 @@
+@page "/contas"
+@using Microsoft.AspNetCore.Authorization
+@using RegistroDoc.Contracts.Security
+@attribute [Authorize(Roles = AccessRoles.Administrador)]
+@inject IHttpClientFactory Clients
+
+<PageTitle>Contas - RegistroDoc</PageTitle>
+<h1>Contas individuais</h1>
+<p>Consulta: pesquisa e PDFs. Operador: consulta e cargas. Administrador: todas as ações, contas e auditoria.</p>
+@if (Resultado is not null) { <p role="status">@(Resultado == "ok" ? "Alteração salva." : "Não foi possível salvar. Confira os dados, a senha e se há outro administrador ativo. Sua própria conta deve ser alterada por outro administrador.")</p> }
+<h2>Criar conta</h2>
+<form method="post" action="/contas/criar" data-enhance="false" class="card card-body mb-4">
+    <AntiforgeryToken />
+    <label>Nome <input class="form-control" name="nome" required maxlength="200" /></label>
+    <label>E-mail <input class="form-control" type="email" name="email" required maxlength="256" /></label>
+    <label>Perfil <select class="form-select" name="perfil">@foreach (var role in AccessRoles.Todos) { <option value="@role" selected="@(role == AccessRoles.Consulta)">@role</option> }</select></label>
+    <label>Senha inicial <input class="form-control" type="password" name="senha" autocomplete="new-password" minlength="10" maxlength="128" required /></label>
+    <p>Use ao menos 10 caracteres, incluindo maiúscula, minúscula, número e símbolo. Entregue a senha por canal privado; o usuário pode trocá-la em Minha conta.</p>
+    <button class="btn btn-primary" type="submit">Criar conta</button>
+</form>
+<h2>Contas cadastradas</h2>
+@if (_error) { <p role="alert">Não foi possível consultar as contas. Verifique sua sessão e tente novamente.</p> }
+@foreach (var account in _accounts)
+{
+    <section class="card card-body mb-3">
+        <h3>@account.Email</h3>
+        <form method="post" action="/contas/salvar" data-enhance="false">
+            <AntiforgeryToken /><input type="hidden" name="id" value="@account.Id" />
+            <label>Nome <input class="form-control" name="nome" value="@account.NomeCompleto" required maxlength="200" /></label>
+            <label>Perfil <select class="form-select" name="perfil">@foreach (var role in AccessRoles.Todos) { <option value="@role" selected="@account.Roles.Contains(role)">@role</option> }</select></label>
+            <label><input type="checkbox" name="ativo" value="true" checked="@account.Ativo" /> Conta ativa</label>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </form>
+        <form method="post" action="/contas/senha" data-enhance="false" class="mt-3">
+            <AntiforgeryToken /><input type="hidden" name="id" value="@account.Id" />
+            <label>Redefinir senha <input type="password" name="senha" autocomplete="new-password" minlength="10" maxlength="128" required /></label>
+            <button type="submit" class="btn btn-outline-secondary">Redefinir e encerrar sessões</button>
+        </form>
+    </section>
+}
+@if (Pagina > 1) { <a href="@($"/contas?Pagina={Pagina - 1}")">Anterior</a> }
+@if (_accounts.Length == 50) { <a class="ms-3" href="@($"/contas?Pagina={Pagina + 1}")">Próxima</a> }
+
+@code {
+    [SupplyParameterFromQuery] public string? Resultado { get; set; }
+    [SupplyParameterFromQuery] public int Pagina { get; set; } = 1;
+    private UserAccount[] _accounts = [];
+    private bool _error;
+    protected override async Task OnParametersSetAsync()
+    {
+        try { using var client = Clients.CreateClient("RegistroDoc.IdentityAdmin");
+            _accounts = await client.GetFromJsonAsync<UserAccount[]>($"api/users?pagina={Math.Max(1, Pagina)}") ?? []; }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { _error = true; }
+    }
+}

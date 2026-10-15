@@ -61,6 +61,7 @@ public sealed class JwtTokenService
 
         var claims = new List<Claim>
         {
+            new("security_stamp", await _userManager.GetSecurityStampAsync(user)),
             new(
                 JwtRegisteredClaimNames.Sub,
                 user.Id.ToString()),

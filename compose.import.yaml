@@ -10,6 +10,7 @@ services:
         condition: service_healthy
     environment:
       DOTNET_ENVIRONMENT: Production
+      IdentityHub__BaseUrl: "http://identityhub:8080/"
       Importacao__ConfigPath: /config/importacao.json
       ConnectionStrings__RegistroDoc: "Host=postgres;Port=5432;Database=registrodoc;Username=registrodoc;Password=${POSTGRES_PASSWORD}"
       Logging__LogLevel__Default: Warning

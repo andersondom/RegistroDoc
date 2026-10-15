@@ -20,9 +20,9 @@ Não interpretar `Iniciado` como acesso negado ou inexistente. O operador deve i
 
 ## Operação e continuidade
 
-Não foi criado endpoint público de leitura ou edição de auditoria. A consulta depende de acesso administrativo ao banco. Incluir a tabela nos backups existentes; nesta etapa não há expurgo automático. Antes da produção, definir responsável, retenção, permissões administrativas e acompanhamento de falhas. Esta implementação não oferece armazenamento imutável contra administradores do banco.
+A etapa 2 adicionou consulta em `/auditorias` e `GET /api/auditorias`, restrita ao Administrador; não há edição ou exclusão pela aplicação. Incluir a tabela nos backups existentes; não há expurgo automático. Antes da produção, definir responsável, retenção e acompanhamento de falhas. Esta implementação não oferece armazenamento imutável contra administradores do banco.
 
-A etapa 2 deve definir contas individuais e políticas para consulta, administração e carga. A auditoria preserva o identificador autenticado, mas não substitui autorização nem isolamento por serventia. O bloqueio após logout segue o fluxo Web existente; a API não introduz revogação de JWT nesta etapa.
+Os [perfis e contas da etapa 2](PERFIS-CONTAS.md) controlam consulta, administração e carga. A auditoria preserva o identificador autenticado, mas não substitui autorização nem isolamento por serventia. A etapa 2 acrescenta validação de sessão e revogação de JWT; tentativas com token revogado têm identidade não validada e são registradas sem autoria.
 
 ## Validação
 

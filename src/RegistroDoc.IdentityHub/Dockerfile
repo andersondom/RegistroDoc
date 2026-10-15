@@ -2,6 +2,7 @@
 WORKDIR /src
 
 COPY ["src/RegistroDoc.IdentityHub/RegistroDoc.IdentityHub.csproj", "src/RegistroDoc.IdentityHub/"]
+COPY ["src/RegistroDoc.Contracts/RegistroDoc.Contracts.csproj", "src/RegistroDoc.Contracts/"]
 RUN dotnet restore "src/RegistroDoc.IdentityHub/RegistroDoc.IdentityHub.csproj"
 
 COPY . .

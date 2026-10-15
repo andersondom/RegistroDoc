@@ -23,6 +23,7 @@ using RegistroDoc.Infrastructure.Persistence;
 
 namespace RegistroDoc.IntegrationTests;
 
+[Collection("Auditoria HTTP")]
 public sealed class DocumentAuditIntegrationTests
 {
     [Fact]
@@ -70,7 +71,7 @@ public sealed class DocumentAuditIntegrationTests
             .Features.Get<IServerAddressesFeature>()!.Addresses.Single()) };
         var user = "ficticio-" + Guid.NewGuid();
         string Token(string actor, DateTime expires) => new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
-            "audit-test", "audit-test", [new Claim(ClaimTypes.NameIdentifier, actor)],
+            "audit-test", "audit-test", [new Claim(ClaimTypes.NameIdentifier, actor), new Claim(ClaimTypes.Role, "Consulta")],
             notBefore: expires.AddMinutes(-10), expires: expires,
             signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)));
         async Task<Auditoria> Check(string path, HttpStatusCode expected, string? token, string? range = null)

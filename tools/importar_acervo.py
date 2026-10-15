@@ -4,6 +4,7 @@ Lê IMPORT_SOURCE_PATH, IMPORT_CONFIG_PATH, IMPORT_REPORT_PATH e IMPORT_TARGET_P
 Não imprime configuração do Docker, credenciais ou caminhos do acervo.
 """
 import argparse
+import getpass
 import hashlib
 import json
 import os
@@ -149,14 +150,17 @@ def main(argv=None):
     project = configuration.get("name")
     if not engine or not project:
         raise ImportConfigurationError("Não foi possível identificar o Docker de destino.")
-    run = command + ["run", "--build", "--rm", "--no-deps", "-e",
+    run = command + ["run", "--build", "--rm", "--no-deps", "-T", "-e",
                      "Importacao__ExecutionContext=" + operation_context(source, target, engine, project), "importer"]
+    credentials = None
     if args.acao == "simular":
         run += ["--import-plan"]
     else:
         run += ["--import-execute", "--Importacao:ApprovedPlanPath", approved_plan(reports, args.plano)]
+        credentials = json.dumps({"Email": input("E-mail do operador: ").strip(),
+                                  "Password": getpass.getpass("Senha: ")}) + "\n"
     print("Preparando a imagem e processando o lote configurado...", flush=True)
-    result = subprocess.run(run, cwd=ROOT, env=env, capture_output=True, text=True, encoding="utf-8")
+    result = subprocess.run(run, cwd=ROOT, env=env, capture_output=True, text=True, encoding="utf-8", input=credentials)
     # A saída bruta do Docker pode conter caminhos internos; publicar só o resumo conhecido.
     summary = None
     for line in result.stdout.splitlines():

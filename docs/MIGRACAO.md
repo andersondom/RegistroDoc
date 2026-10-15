@@ -74,12 +74,12 @@ docker compose -f compose.yaml -f compose.import.yaml --profile importacao run -
 Depois de revisar o relatório e autorizar a carga no banco/acervo escolhido:
 
 ```powershell
-docker compose -f compose.yaml -f compose.import.yaml --profile importacao run --rm --no-deps importer --import-execute --Importacao:ApprovedPlanPath /reports/NOME-DO-PLANO-REVISADO.ndjson
+python tools/importar_acervo.py executar --plano NOME-DO-PLANO-REVISADO.ndjson
 ```
 
-O banco já deve estar ativo e provisionado. O importador não executa migrações de schema. Em produção, usar também o arquivo de ambiente e as sobreposições correspondentes ao servidor, conferindo origem/destino antes de executar.
+O banco já deve estar ativo e provisionado e o IdentityHub disponível. O lançador solicita conta individual de Operador ou Administrador e senha oculta. O importador não executa migrações de schema. Em produção, usar também o arquivo de ambiente e as sobreposições correspondentes ao servidor, conferindo origem/destino antes de executar.
 
-Os mesmos modos podem ser usados com `dotnet run --project src/RegistroDoc.Indexer -- --import-plan --Importacao:ConfigPath caminho-config-local`, ou `--import-execute --Importacao:ApprovedPlanPath caminho-do-plano`. Nesse caso, configurar caminhos do host no JSON e fornecer a conexão por variável `ConnectionStrings__RegistroDoc` tanto na simulação quanto na execução: sua identidade faz parte do plano, embora a simulação não acesse o banco. Nunca colocar credenciais no comando ou no arquivo versionado.
+Os mesmos modos podem ser usados com `dotnet run --project src/RegistroDoc.Indexer -- --import-plan --Importacao:ConfigPath caminho-config-local`, ou `--import-execute --Importacao:ApprovedPlanPath caminho-do-plano`. A execução direta exige uma linha JSON de credenciais (`Email` e `Password`) via stdin; usar o lançador para entrada oculta, evitando terminal com eco ou histórico. Configurar `IdentityHub__BaseUrl` com endereço de confiança. Configurar caminhos do host no JSON e fornecer a conexão por variável `ConnectionStrings__RegistroDoc` tanto na simulação quanto na execução: sua identidade faz parte do plano, embora a simulação não acesse o banco. Nunca colocar credenciais no comando ou no arquivo versionado.
 
 ## Operação assistida por terminal — 2026-10-14
 
@@ -96,7 +96,7 @@ Revisar o arquivo `.ndjson` gerado na pasta privada: categorias, anos, contagens
 python tools/importar_acervo.py executar --plano NOME-DO-PLANO-REVISADO.ndjson
 ```
 
-Em produção, usar `--production --env-file CAMINHO-DO-AMBIENTE-LOCAL` em todas as ações. O lançador inclui a sobreposição de produção, sem iniciar banco/API nem aplicar migrações.
+Em produção, usar `--production --env-file CAMINHO-DO-AMBIENTE-LOCAL` em todas as ações. O lançador inclui a sobreposição de produção, sem iniciar banco/API nem aplicar migrações. A etapa 2 exige autenticação para executar e revalida a permissão entre arquivos. Revogação, expiração ou indisponibilidade interrompem o lote sem desfazer itens anteriores; conferir relatório e retomar com login válido. Ver [PERFIS-CONTAS](PERFIS-CONTAS.md).
 
 O plano deve estar completo e sem falhas, com ao menos um PDF pronto. Alterações nos arquivos, categorias, serventia, destino ou identidade da conexão exigem nova simulação. Pelo lançador, o plano também fica vinculado às pastas físicas, ao Docker e ao projeto Compose. A execução verifica o lote antes de acessar o banco; erros posteriores podem deixar itens já importados, portanto não há transação única de lote. A retomada usa a detecção de duplicações existente. Não editar o relatório para contornar a validação: ele registra a revisão operacional, não constitui assinatura digital nem controle de autorização do operador.
 

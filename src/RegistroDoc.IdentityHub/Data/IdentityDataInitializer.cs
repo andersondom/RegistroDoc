@@ -21,7 +21,8 @@ public static class IdentityDataInitializer
         string[] roles =
         [
             IdentityRoles.Administrador,
-            IdentityRoles.Operador
+            IdentityRoles.Operador,
+            IdentityRoles.Consulta
         ];
 
         foreach (var roleName in roles)
@@ -58,6 +59,9 @@ public static class IdentityDataInitializer
         }
 
         var admin = await userManager.FindByEmailAsync(adminEmail);
+
+        // Bootstrap não deve reativar nem promover uma conta existente após reinício.
+        if (admin is not null) return;
 
         if (admin is null)
         {

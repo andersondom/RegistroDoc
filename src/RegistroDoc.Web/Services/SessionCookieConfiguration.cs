@@ -7,6 +7,7 @@ public static class SessionCookieConfiguration
     public static void Configure(CookieAuthenticationOptions options)
     {
         options.LoginPath = "/login";
+        options.AccessDeniedPath = "/acesso-negado";
         options.Cookie.Name = "RegistroDoc.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;

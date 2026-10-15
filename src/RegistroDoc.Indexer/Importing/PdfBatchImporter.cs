@@ -14,7 +14,7 @@ public sealed class PdfBatchImporter(
     IServiceScopeFactory scopeFactory, IHostEnvironment environment)
 {
     public async Task<ImportSummary> RunAsync(ImportOptions options, bool execute,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, Func<CancellationToken, Task>? authorize = null)
     {
         Validate(options);
         var source = Path.GetFullPath(options.SourcePath);
@@ -35,6 +35,7 @@ public sealed class PdfBatchImporter(
                 relative => ResolveCategory(relative, categories), inspector, cancellationToken);
         if (execute)
         {
+            if (authorize is not null) await authorize(cancellationToken);
             await using var scope = scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<RegistroDocDbContext>();
             if (!await db.Serventias.AnyAsync(s => s.CodigoCns == options.CodigoCnsServentia && s.Ativa, cancellationToken))
@@ -52,6 +53,7 @@ public sealed class PdfBatchImporter(
         foreach (var file in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (execute && authorize is not null) await authorize(cancellationToken);
             total++;
             var relative = Path.GetRelativePath(source, file).Replace('\\', '/');
             ImportCategory? category = null;

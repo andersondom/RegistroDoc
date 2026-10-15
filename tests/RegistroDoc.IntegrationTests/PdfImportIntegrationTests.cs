@@ -44,6 +44,10 @@ public sealed class PdfImportIntegrationTests
             Assert.Equal(new ImportSummary(1, 1, 0, 0, 0), plan);
             options.ApprovedPlanPath = Directory.GetFiles(options.ReportDirectory, "*.ndjson").Single();
             Assert.False(Directory.Exists(target));
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => importer.RunAsync(options, execute: true,
+                authorize: _ => throw new UnauthorizedAccessException()));
+            Assert.False(Directory.Exists(target));
+            Assert.Single(Directory.GetFiles(options.ReportDirectory, "*.ndjson"));
             await using var scope = provider.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<RegistroDocDbContext>();
             Assert.False(await db.Documentos.AnyAsync(d => d.TipoDocumento == type));

@@ -1,0 +1,39 @@
+@page "/auditorias"
+@using Microsoft.AspNetCore.Authorization
+@using System.Text.Json
+@attribute [Authorize(Roles = RegistroDoc.Contracts.Security.AccessRoles.Administrador)]
+@inject IHttpClientFactory Clients
+<PageTitle>Auditoria - RegistroDoc</PageTitle>
+<h1>Auditoria de acesso</h1>
+<p>Horários em UTC. Registros iniciados podem indicar interrupção ou falha na conclusão. Cada requisição parcial de PDF é um evento; isso não comprova leitura integral.</p>
+@if (_error) { <p role="alert">Não foi possível consultar os eventos. Verifique sua sessão e tente novamente.</p> }
+<div class="table-responsive"><table class="table"><thead><tr><th>Horário UTC</th><th>Usuário (ID)</th><th>Ação</th><th>Documento</th><th>Resultado</th></tr></thead>
+<tbody>@foreach (var item in _items) { <tr><td>@item.OcorridaEmUtc.ToString("yyyy-MM-dd HH:mm:ss")</td><td>@(item.UsuarioId ?? "Anônimo")</td><td>@(item.Acao == "LerPdf" ? "Abrir PDF" : "Pesquisa")</td><td>@item.EntidadeId</td><td>@Outcome(item.Descricao)</td></tr> }</tbody></table></div>
+@if (Pagina > 1) { <a href="@($"/auditorias?Pagina={Pagina - 1}")">Anterior</a> }
+@if (_items.Length == 50) { <a class="ms-3" href="@($"/auditorias?Pagina={Pagina + 1}")">Próxima</a> }
+@code {
+    [SupplyParameterFromQuery] public int Pagina { get; set; } = 1;
+    private AuditRow[] _items = [];
+    private bool _error;
+    private static string Outcome(string? description)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(description ?? "{}");
+            return json.RootElement.GetProperty("Resultado").GetString() switch
+            {
+                "RespostaConcluida" => "Resposta concluída", "Negado" => "Acesso negado",
+                "Cancelado" => "Cancelado", "ErroHttp" or "ErroExecucao" => "Erro",
+                _ => "Conclusão não confirmada"
+            };
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { return "Conclusão não confirmada"; }
+    }
+    protected override async Task OnParametersSetAsync()
+    {
+        try { using var client = Clients.CreateClient("RegistroDoc.Api");
+            _items = await client.GetFromJsonAsync<AuditRow[]>($"api/auditorias?pagina={Math.Max(1, Pagina)}") ?? []; }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { _error = true; }
+    }
+    public sealed record AuditRow(Guid Id, string? UsuarioId, string Acao, string EntidadeId, DateTime OcorridaEmUtc, string? Descricao);
+}

@@ -16,6 +16,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddHttpClient("IdentitySession", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["IdentityHub:BaseUrl"] ?? "http://localhost:8081/");
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -72,6 +77,7 @@ builder.Services
         JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Events = new JwtBearerEvents { OnTokenValidated = IdentitySessionValidation.ValidateAsync };
         options.TokenValidationParameters =
             new TokenValidationParameters
             {

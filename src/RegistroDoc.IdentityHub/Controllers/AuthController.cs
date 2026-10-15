@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using RegistroDoc.IdentityHub.Data;
 using RegistroDoc.IdentityHub.Security;
+using Microsoft.AspNetCore.Authorization;
+using RegistroDoc.Contracts.Security;
 
 namespace RegistroDoc.IdentityHub.Controllers;
 
@@ -9,6 +11,34 @@ namespace RegistroDoc.IdentityHub.Controllers;
 [Route("api/auth")]
 public sealed class AuthController : ControllerBase
 {
+    [Authorize]
+    [HttpGet("session")]
+    public IActionResult Session() => NoContent();
+
+    [Authorize(Roles = AccessRoles.Importacao)]
+    [HttpGet("importacao")]
+    public IActionResult Importacao() => NoContent();
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+        return (await _userManager.UpdateSecurityStampAsync(user)).Succeeded
+            ? NoContent() : StatusCode(503);
+    }
+
+    [Authorize]
+    [HttpPost("password")]
+    public async Task<IActionResult> ChangePassword(ChangeOwnPassword request)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+        var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.Password);
+        return result.Succeeded ? NoContent() : BadRequest(new { message = "Confira a senha atual e os requisitos da nova senha." });
+    }
+
     private readonly UserManager<IdentityHubUser> _userManager;
     private readonly SignInManager<IdentityHubUser> _signInManager;
     private readonly JwtTokenService _jwtTokenService;
