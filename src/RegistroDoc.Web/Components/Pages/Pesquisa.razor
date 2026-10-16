@@ -5,10 +5,13 @@
 @using Microsoft.AspNetCore.Components.Forms
 @attribute [Authorize(Roles = "Administrador,Operador")]
 @using System.Net.Http.Json
+@using System.Net.Http.Headers
 @using RegistroDoc.Contracts.Search
 @using RegistroDoc.Web.Services
 @rendermode InteractiveServer
 @inject IHttpClientFactory HttpClientFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
 
 <PageTitle>Acervo documental | RegistroDoc</PageTitle>
 
@@ -115,12 +118,12 @@ else if (_resultado is not null)
                 <nav class="rd-pagination" aria-label="Paginação dos resultados">
                     @if (_resultado.Pagina > 1)
                     {
-                        <a class="btn btn-outline-secondary" href="@ObterUrlPagina(_resultado.Pagina - 1)">← Anterior</a>
+                        <a class="btn btn-outline-secondary" href="@ObterUrlPagina(_resultado.Pagina - 1)" @onclick="() => IrParaPagina(_resultado.Pagina - 1)" @onclick:preventDefault="true">← Anterior</a>
                     }
                     <span>Página @_resultado.Pagina de @_resultado.TotalPaginas</span>
                     @if (_resultado.Pagina < _resultado.TotalPaginas)
                     {
-                        <a class="btn btn-outline-secondary" href="@ObterUrlPagina(_resultado.Pagina + 1)">Próxima →</a>
+                        <a class="btn btn-outline-secondary" href="@ObterUrlPagina(_resultado.Pagina + 1)" @onclick="() => IrParaPagina(_resultado.Pagina + 1)" @onclick:preventDefault="true">Próxima →</a>
                     }
                 </nav>
             }
@@ -172,6 +175,8 @@ else if (_resultado is not null)
         return $"/pesquisa/{Math.Max(1, pagina)}{query}";
     }
 
+    private void IrParaPagina(int pagina) => Navigation.NavigateTo(ObterUrlPagina(pagina), forceLoad: true);
+
     private async Task PesquisarAsync()
     {
         _pagina = 1;
@@ -204,8 +209,21 @@ else if (_resultado is not null)
             }
 
             var client = HttpClientFactory.CreateClient("RegistroDoc.Api");
-            _resultado = await client.GetFromJsonAsync<DocumentoSearchResponse>(
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var accessToken = authState.User.FindFirst("registrodoc_access_token")?.Value;
+            if (string.IsNullOrWhiteSpace(accessToken))
+            {
+                _erro = "Sua sessão expirou. Entre novamente para continuar."; 
+                _resultado = null;
+                return;
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Get,
                 "api/documentos/pesquisa?" + string.Join("&", parametros));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            using var response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            _resultado = await response.Content.ReadFromJsonAsync<DocumentoSearchResponse>();
 
             if (_resultado is null)
             {
